@@ -1,33 +1,40 @@
-<!-- app/static/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>File Embedder</title>
+  <title>Chat with Supabase</title>
 </head>
 <body>
-  <h1>📄 Upload a Document</h1>
-  <form id="upload-form">
-    <input type="file" id="file-input" name="file" accept=".pdf,.docx,.pptx" required />
-    <button type="submit">Upload</button>
-  </form>
-  <div id="result"></div>
+  <h1>💬 Chatbot</h1>
+  <div id="chat-box" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto;"></div>
+  <input id="user-input" placeholder="Type your question..." style="width: 70%;" />
+  <button onclick="sendMessage()">Send</button>
 
   <script>
-    document.getElementById("upload-form").onsubmit = async (e) => {
-      e.preventDefault();
-      const file = document.getElementById("file-input").files[0];
-      const formData = new FormData();
-      formData.append("file", file);
+    async function sendMessage() {
+      const input = document.getElementById("user-input").value;
+      const chatBox = document.getElementById("chat-box");
 
-      const res = await fetch("/upload", {
+      if (!input.trim()) return;
+
+      chatBox.innerHTML += `🧑 You: ${input}\n`;
+      document.getElementById("user-input").value = "";
+
+      const res = await fetch("/chat", {
         method: "POST",
-        body: formData
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input })
       });
 
       const data = await res.json();
-      document.getElementById("result").innerText = JSON.stringify(data, null, 2);
-    };
+      if (data.response) {
+        chatBox.innerHTML += `🤖 Bot: ${data.response}\n\n`;
+      } else {
+        chatBox.innerHTML += `❌ Error: ${data.error || "Unknown"}\n\n`;
+      }
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
   </script>
 </body>
 </html>
