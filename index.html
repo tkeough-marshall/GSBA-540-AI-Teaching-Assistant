@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>MOR 565 AI Teaching Assistant</title>
+
+  <!-- Correct favicon (square version) -->
   <link rel="icon" type="image/jpeg" href="/static/USC_Marshall_Logo_Square.jpg">
+
   <style>
     body {
       background-color: #fff;
@@ -23,6 +26,9 @@
       padding: 1rem 2rem 0.75rem 2rem;
       border-bottom: 4px solid #ffc72c;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     header h1 {
@@ -39,16 +45,12 @@
     }
 
     .header-logo {
-      position: absolute;
-      right: 1.5rem;
-      top: 50%;
-      transform: translateY(-50%);
-      height: 42px;
+      height: 50px;
       width: auto;
     }
 
     @media (max-width: 600px) {
-      .header-logo { height: 30px; right: 1rem; }
+      .header-logo { height: 36px; }
       header h1 { font-size: 1.5rem; }
       header p { font-size: 0.85rem; }
     }
@@ -127,7 +129,6 @@
     #send-button:hover { background-color: #800000; }
     #send-button:disabled { background-color: #bbb; cursor: not-allowed; }
 
-    /* ===== Modal ===== */
     .modal {
       position: fixed;
       top: 0; left: 0;
@@ -182,9 +183,7 @@
       transition: color 0.2s ease;
     }
 
-    .close-x:hover {
-      color: #800000;
-    }
+    .close-x:hover { color: #800000; }
 
     .contact-info {
       margin-top: 2rem;
@@ -216,9 +215,12 @@
 
 <body>
   <header>
-    <h1>MOR 565 AI Teaching Assistant</h1>
-    <p>Part of the USC Marshall AI Strategy Initiative</p>
-    <img src="/static/USC_Marshall_Logo.jpg" alt="USC Marshall Logo" class="header-logo" />
+    <div>
+      <h1>MOR 565 AI Teaching Assistant</h1>
+      <p>Part of the USC Marshall AI Strategy Initiative</p>
+    </div>
+    <!-- Correct header logo -->
+    <img src="/static/USC_Marshall_Logo.png" alt="USC Marshall Logo" class="header-logo" />
   </header>
 
   <!-- ===== Executive Greeting Modal ===== -->
@@ -229,7 +231,7 @@
 
       <p>
         This digital assistant supports <strong>MOR 565: Alliances & Cooperative Strategy (Spring 2025)</strong>, taught by 
-        <strong>Professor Kyle Mayer</strong> at the <strong>USC Marshall School of Business</strong>.
+        <strong>Professor Kyle Mayer</strong> with the help of </strong>Ty Keough, Teaching Assistant</strong> at the <strong>USC Marshall School of Business</strong>.
       </p>
 
       <p>
