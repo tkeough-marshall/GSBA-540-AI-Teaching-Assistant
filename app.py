@@ -19,7 +19,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EMBED_MODEL = "text-embedding-3-large"
 CHAT_MODEL = "gpt-4.1-mini"  # compact + fast
 VECTOR_DIM = 3072
-TOP_K = 5  # number of chunks to retrieve from Supabase
+TOP_K = 15  # number of chunks to retrieve from Supabase
 
 # ==============================
 # 🚀 Flask App Setup
