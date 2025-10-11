@@ -1,10 +1,12 @@
-fastapi
-uvicorn
+# Core backend
+flask
+flask-cors
+
+# OpenAI API
 openai
-python-dotenv
-python-pptx
-python-docx
-PyMuPDF
-python-multipart
-tqdm
+
+# Supabase client
 supabase
+
+# Environment variable loader
+python-dotenv
