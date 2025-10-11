@@ -16,6 +16,7 @@
       flex-direction: column;
     }
 
+    /* ===== HEADER ===== */
     header {
       background-color: #990000;
       color: #fff;
@@ -57,13 +58,15 @@
       text-decoration: underline;
     }
 
+    /* FIXED transparent logo */
     .header-logo {
       height: 50px;
       width: auto;
       object-fit: contain;
-      background: #fff;
-      border-radius: 4px;
-      padding: 4px;
+      background: none;
+      border: none;
+      mix-blend-mode: lighten;
+      filter: brightness(1.05);
     }
 
     @media (max-width: 600px) {
@@ -72,6 +75,7 @@
       header p { font-size: 0.85rem; }
     }
 
+    /* ===== CHAT ===== */
     #chat-wrapper {
       display: flex;
       justify-content: center;
@@ -146,7 +150,7 @@
     #send-button:hover { background-color: #800000; }
     #send-button:disabled { background-color: #bbb; cursor: not-allowed; }
 
-    /* Modal */
+    /* ===== MODAL ===== */
     .modal {
       position: fixed;
       top: 0; left: 0;
@@ -244,7 +248,7 @@
     <img src="/static/USC_Marshall_Logo_White.png" alt="USC Marshall Logo" class="header-logo" />
   </header>
 
-  <!-- Executive Greeting Modal -->
+  <!-- ===== MODAL ===== -->
   <div id="intro-modal" class="modal">
     <div class="modal-content">
       <span class="close-x" onclick="closeModal()">×</span>
@@ -295,6 +299,7 @@
     </div>
   </div>
 
+  <!-- ===== CHAT AREA ===== -->
   <div id="chat-wrapper">
     <div id="chat-container"></div>
   </div>
