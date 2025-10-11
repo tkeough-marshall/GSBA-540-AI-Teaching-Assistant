@@ -61,6 +61,10 @@ def static_files(filename):
     """Serve static assets such as images or CSS."""
     return send_from_directory("static", filename)
 
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory("static", "USC_Marshall_Logo_Square.jpg")
+
 
 @app.route("/chat", methods=["POST"])
 def chat():
