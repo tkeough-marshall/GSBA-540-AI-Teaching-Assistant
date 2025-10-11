@@ -20,7 +20,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EMBED_MODEL = "text-embedding-3-large"
 CHAT_MODEL = "gpt-4o-mini"  # fast + strong reasoning
 VECTOR_DIM = 3072
-TOP_K = 15  # number of chunks to retrieve
+TOP_K = 10  # number of chunks to retrieve
 
 # ==============================
 # 🚀 Flask App Setup
