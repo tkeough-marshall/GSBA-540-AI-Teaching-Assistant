@@ -35,16 +35,25 @@
     }
 
     .chat-message {
-      white-space: pre-wrap;
       padding: 0.75rem 1rem;
       border-radius: 6px;
       line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .chat-message p {
+      margin: 0.5rem 0;
+    }
+
+    .chat-message ul, .chat-message ol {
+      margin: 0.5rem 0 0.5rem 1.25rem;
     }
 
     .user {
       align-self: flex-end;
       background-color: #ffe6e6;
       border: 1px solid #f5c2c2;
+      white-space: pre-wrap;
     }
 
     .bot {
@@ -57,6 +66,9 @@
       display: flex;
       justify-content: space-between;
       margin-top: 2rem;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     #user-input {
@@ -92,17 +104,40 @@
     @keyframes blink {
       50% { opacity: 0.2; }
     }
+
+    /* Markdown styling enhancements */
+    .bot strong {
+      font-weight: 600;
+    }
+    .bot em {
+      font-style: italic;
+    }
+    .bot code {
+      background: #f4f4f4;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .bot pre {
+      background: #f4f4f4;
+      padding: 8px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
   </style>
 </head>
 <body>
-  <header>USC Chatbot</header>
+  <header>MOR 565 Digital Teaching Assistant</header>
 
   <div id="chat-container"></div>
 
-  <div id="input-area" style="max-width: 800px; margin: 0 auto 2rem;">
+  <div id="input-area">
     <input id="user-input" placeholder="Type your question..." />
     <button id="send-button">Send</button>
   </div>
+
+  <!-- Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <script>
     const chatContainer = document.getElementById("chat-container");
@@ -112,7 +147,14 @@
     function appendMessage(content, className) {
       const div = document.createElement("div");
       div.className = `chat-message ${className}`;
-      div.textContent = content;
+
+      // Parse Markdown for bot responses
+      if (className === "bot") {
+        div.innerHTML = marked.parse(content);
+      } else {
+        div.textContent = content;
+      }
+
       chatContainer.appendChild(div);
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
@@ -163,10 +205,7 @@
       sendButton.disabled = false;
     }
 
-    // Send on button click
     sendButton.addEventListener("click", sendMessage);
-
-    // Send on Enter key
     userInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
