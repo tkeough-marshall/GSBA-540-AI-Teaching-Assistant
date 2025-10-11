@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MOR 565 Digital Teaching Assistant</title>
+  <title>MOR 565 AI Teaching Assistant</title>
+  <link rel="icon" type="image/jpeg" href="/static/USC_Marshall_Logo_Square.jpg">
   <style>
     body {
       background-color: #fff;
@@ -15,7 +16,6 @@
       flex-direction: column;
     }
 
-    /* ===== Header ===== */
     header {
       position: relative;
       background-color: #990000;
@@ -48,21 +48,11 @@
     }
 
     @media (max-width: 600px) {
-      .header-logo {
-        height: 30px;
-        right: 1rem;
-      }
-
-      header h1 {
-        font-size: 1.5rem;
-      }
-
-      header p {
-        font-size: 0.85rem;
-      }
+      .header-logo { height: 30px; right: 1rem; }
+      header h1 { font-size: 1.5rem; }
+      header p { font-size: 0.85rem; }
     }
 
-    /* ===== Chat Container ===== */
     #chat-wrapper {
       display: flex;
       justify-content: center;
@@ -85,7 +75,6 @@
       scroll-behavior: smooth;
     }
 
-    /* ===== Chat Messages ===== */
     .chat-message {
       padding: 0.75rem 1rem;
       border-radius: 6px;
@@ -106,22 +95,6 @@
       border: 1px solid #ddd;
     }
 
-    .bot strong { font-weight: 600; }
-    .bot em { font-style: italic; }
-    .bot code {
-      background: #f4f4f4;
-      padding: 2px 4px;
-      border-radius: 4px;
-      font-family: monospace;
-    }
-    .bot pre {
-      background: #f4f4f4;
-      padding: 8px;
-      border-radius: 6px;
-      overflow-x: auto;
-    }
-
-    /* ===== Input Area ===== */
     #input-area {
       display: flex;
       justify-content: center;
@@ -151,50 +124,163 @@
       transition: background 0.2s ease;
     }
 
-    #send-button:hover {
-      background-color: #800000;
+    #send-button:hover { background-color: #800000; }
+    #send-button:disabled { background-color: #bbb; cursor: not-allowed; }
+
+    /* ===== Modal ===== */
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
     }
 
-    #send-button:disabled {
-      background-color: #bbb;
-      cursor: not-allowed;
+    .modal-content {
+      position: relative;
+      background: #fff;
+      border-radius: 10px;
+      max-width: 720px;
+      padding: 2.5rem;
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+      text-align: left;
+      overflow-y: auto;
+      max-height: 85vh;
     }
 
-    .typing {
-      font-style: italic;
-      color: #999;
-      animation: blink 1s step-end infinite;
+    .modal h2 {
+      color: #990000;
+      margin-top: 0;
+      font-size: 1.6rem;
+      border-bottom: 3px solid #ffc72c;
+      padding-bottom: 0.5rem;
     }
 
-    @keyframes blink {
-      50% { opacity: 0.2; }
+    .modal h3 {
+      margin-top: 1.5rem;
+      color: #2b2b2b;
+      font-size: 1.1rem;
     }
+
+    .modal p {
+      font-size: 1rem;
+      line-height: 1.65;
+      margin-top: 0.5rem;
+    }
+
+    .close-x {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 1.4rem;
+      color: #990000;
+      cursor: pointer;
+      font-weight: bold;
+      transition: color 0.2s ease;
+    }
+
+    .close-x:hover {
+      color: #800000;
+    }
+
+    .contact-info {
+      margin-top: 2rem;
+      font-size: 0.95rem;
+      color: #444;
+    }
+
+    .contact-info a {
+      color: #990000;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .close-btn {
+      background-color: #990000;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.7rem 1.4rem;
+      cursor: pointer;
+      font-weight: 600;
+      float: right;
+      margin-top: 1.8rem;
+    }
+
+    .close-btn:hover { background-color: #800000; }
   </style>
 </head>
 
 <body>
-  <!-- ===== Header Section ===== -->
   <header>
-    <h1>MOR 565 Digital Teaching Assistant</h1>
+    <h1>MOR 565 AI Teaching Assistant</h1>
     <p>Part of the USC Marshall AI Strategy Initiative</p>
-    <img src="/static/USC_Marshall_logo.png" alt="USC Marshall Logo" class="header-logo" />
+    <img src="/static/USC_Marshall_Logo_Square.jpg" alt="USC Marshall Logo" class="header-logo" />
   </header>
 
-  <!-- ===== Chat Area ===== -->
+  <!-- ===== Executive Greeting Modal ===== -->
+  <div id="intro-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-x" onclick="closeModal()">×</span>
+      <h2>Welcome to the MOR 565 AI Teaching Assistant</h2>
+
+      <p>
+        This digital assistant supports <strong>MOR 565: Alliances & Cooperative Strategy (Spring 2025)</strong>, taught by 
+        <strong>Professor Kyle Mayer</strong> at the <strong>USC Marshall School of Business</strong>.
+      </p>
+
+      <p>
+        Developed as part of the <strong>Marshall AI Strategy Initiative</strong>, this system represents a new model for academic engagement — 
+        blending advanced language models with curated course materials to create an intelligent, retrieval-based learning companion.
+      </p>
+
+      <h3>Purpose</h3>
+      <p>
+        The AI Teaching Assistant is designed to enhance strategic thinking and reflection by providing contextual explanations, 
+        conceptual frameworks, and guidance drawn directly from official MOR 565 materials. 
+        It promotes deeper understanding and disciplined application of alliance strategy concepts — not assignment completion.
+      </p>
+
+      <h3>Principles</h3>
+      <p>
+        • Operates within the academic and ethical framework of the course.<br>
+        • Maintains an MBA-level standard of clarity, professionalism, and analytical rigor.<br>
+        • Uses only verified course content and does not fabricate information.<br>
+        • Defers all grading, policy, and administrative matters to Professor Mayer.
+      </p>
+
+      <h3>About the Project</h3>
+      <p>
+        This assistant is part of USC Marshall’s broader effort to responsibly integrate generative AI into graduate business education — 
+        focusing on augmentation, transparency, and human-centered design. It demonstrates how retrieval-augmented workflows 
+        can support applied learning and strategic reasoning at scale.
+      </p>
+
+      <div class="contact-info">
+        <p><strong>Created and Monitored by:</strong> Ty Keough, USC Marshall MS Finance Class of 2026</p>
+        <p>
+          <a href="https://www.linkedin.com/in/tykeough/" target="_blank">LinkedIn</a> | 
+          <a href="mailto:tkeough@marshall.usc.edu">tkeough@marshall.usc.edu</a>
+        </p>
+      </div>
+
+      <button class="close-btn" onclick="closeModal()">Enter Assistant</button>
+    </div>
+  </div>
+
   <div id="chat-wrapper">
     <div id="chat-container"></div>
   </div>
 
-  <!-- ===== Input Area ===== -->
   <div id="input-area">
     <input id="user-input" placeholder="Type your question..." />
     <button id="send-button">Send</button>
   </div>
 
-  <!-- ===== Dependencies ===== -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-  <!-- ===== Script ===== -->
   <script>
     const chatContainer = document.getElementById("chat-container");
     const userInput = document.getElementById("user-input");
@@ -203,37 +289,22 @@
     function appendMessage(content, className) {
       const div = document.createElement("div");
       div.className = `chat-message ${className}`;
-      if (className === "bot") {
-        div.innerHTML = marked.parse(content);
-      } else {
-        div.textContent = content;
-      }
+      div.innerHTML = className === "bot" ? marked.parse(content) : content;
       chatContainer.appendChild(div);
       chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    function appendTypingIndicator() {
-      const typingDiv = document.createElement("div");
-      typingDiv.className = "chat-message bot typing";
-      typingDiv.id = "typing";
-      typingDiv.textContent = "Typing...";
-      chatContainer.appendChild(typingDiv);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    function removeTypingIndicator() {
-      const typing = document.getElementById("typing");
-      if (typing) typing.remove();
     }
 
     async function sendMessage() {
       const message = userInput.value.trim();
       if (!message) return;
-
       appendMessage("You: " + message, "user");
       userInput.value = "";
       sendButton.disabled = true;
-      appendTypingIndicator();
+
+      const typing = document.createElement("div");
+      typing.className = "chat-message bot typing";
+      typing.textContent = "Typing...";
+      chatContainer.appendChild(typing);
 
       try {
         const response = await fetch("/chat", {
@@ -241,17 +312,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message })
         });
-
         const data = await response.json();
-        removeTypingIndicator();
-
-        if (data.response) {
-          appendMessage(data.response, "bot");
-        } else {
-          appendMessage(`Error: ${data.error || "Something went wrong"}`, "bot");
-        }
+        typing.remove();
+        appendMessage(data.response || `Error: ${data.error}`, "bot");
       } catch (error) {
-        removeTypingIndicator();
+        typing.remove();
         appendMessage(`Error: ${error.message}`, "bot");
       }
 
@@ -259,12 +324,13 @@
     }
 
     sendButton.addEventListener("click", sendMessage);
-    userInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        sendMessage();
-      }
+    userInput.addEventListener("keypress", e => {
+      if (e.key === "Enter") sendMessage();
     });
+
+    function closeModal() {
+      document.getElementById("intro-modal").style.display = "none";
+    }
   </script>
 </body>
 </html>
