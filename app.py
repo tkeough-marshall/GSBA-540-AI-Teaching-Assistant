@@ -17,14 +17,14 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # ⚙️ Model & Vector Config
 # ==============================
 EMBED_MODEL = "text-embedding-3-large"
-CHAT_MODEL = "gpt-4.1-mini"
+CHAT_MODEL = "gpt-4.1-mini"  # compact + fast
 VECTOR_DIM = 3072
-TOP_K = 5
+TOP_K = 5  # number of chunks to retrieve from Supabase
 
 # ==============================
 # 🚀 Flask App Setup
 # ==============================
-app = Flask(__name__)  # no static folder
+app = Flask(__name__)
 CORS(app)
 
 # Init clients
@@ -37,42 +37,61 @@ openai.api_key = OPENAI_API_KEY
 
 @app.route("/")
 def index():
-    return send_from_directory(".", "index.html")  # serve from root folder
+    """Serve the index.html file from the root directory."""
+    return send_from_directory(".", "index.html")
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    """Main chat endpoint."""
     user_input = request.json.get("message")
     if not user_input:
         return jsonify({"error": "No input provided"}), 400
 
     try:
-        # 🔍 Embed user query
+        # =======================================
+        # 🧠 Step 1: Embed the user’s query
+        # =======================================
         embed_resp = openai.embeddings.create(
             input=[user_input],
             model=EMBED_MODEL
         )
         query_vector = embed_resp.data[0].embedding
 
-        # 📡 Query Supabase
-        response = supabase.table("documents").rpc("match_documents", {
+        # =======================================
+        # 📡 Step 2: Query Supabase via RPC
+        # =======================================
+        response = supabase.rpc("match_documents", {
             "query_embedding": query_vector,
             "match_count": TOP_K
         }).execute()
 
-        if response.get("error"):
-            return jsonify({"error": response["error"]["message"]}), 500
+        if getattr(response, "error", None):
+            return jsonify({"error": str(response.error)}), 500
 
-        matches = response["data"]
-        context = "\n\n".join([doc["content"] for doc in matches])
+        # =======================================
+        # 🧩 Step 3: Build context from matches
+        # =======================================
+        matches = getattr(response, "data", [])
+        if not matches:
+            return jsonify({"response": "No relevant documents found in Supabase."})
 
-        # 💬 GPT Prompt
-        system_prompt = "You are a helpful assistant that answers based on the context provided."
+        context = "\n\n".join([doc["content"] for doc in matches if doc.get("content")])
+
+        # =======================================
+        # 💬 Step 4: Generate answer with GPT
+        # =======================================
+        system_prompt = (
+            "You are a helpful assistant that answers questions based "
+            "strictly using the provided context. "
+            "If the context doesn't contain enough information, say so clearly."
+        )
+
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {user_input}"}
         ]
 
-        chat_resp = openai.ChatCompletion.create(
+        chat_resp = openai.chat.completions.create(
             model=CHAT_MODEL,
             messages=messages
         )
