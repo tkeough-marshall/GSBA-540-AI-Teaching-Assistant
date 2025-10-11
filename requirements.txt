@@ -1,8 +1,10 @@
+fastapi
+uvicorn
 openai
-supabase
 python-dotenv
-pymupdf
-python-docx
 python-pptx
+python-docx
+PyMuPDF
+python-multipart
 tqdm
-tk
+supabase

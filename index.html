@@ -1,0 +1,33 @@
+<!-- app/static/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>File Embedder</title>
+</head>
+<body>
+  <h1>📄 Upload a Document</h1>
+  <form id="upload-form">
+    <input type="file" id="file-input" name="file" accept=".pdf,.docx,.pptx" required />
+    <button type="submit">Upload</button>
+  </form>
+  <div id="result"></div>
+
+  <script>
+    document.getElementById("upload-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const file = document.getElementById("file-input").files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+    };
+  </script>
+</body>
+</html>
