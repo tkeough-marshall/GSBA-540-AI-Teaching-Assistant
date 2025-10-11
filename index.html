@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>MOR 565 AI Teaching Assistant</title>
-  <link rel="icon" type="image/jpeg" href="/static/USC_Marshall_Logo_Square.jpg" />
 
   <style>
     body {
@@ -18,7 +17,6 @@
     }
 
     header {
-      position: relative;
       background-color: #990000;
       color: #fff;
       padding: 1rem 2rem 0.75rem 2rem;
@@ -45,13 +43,27 @@
     .engineered-by {
       margin-top: 0.35rem;
       font-size: 0.85rem;
-      opacity: 0.85;
+      opacity: 0.9;
       font-style: italic;
+    }
+
+    .engineered-by a {
+      color: #ffc72c;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .engineered-by a:hover {
+      text-decoration: underline;
     }
 
     .header-logo {
       height: 50px;
       width: auto;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 4px;
+      padding: 4px;
     }
 
     @media (max-width: 600px) {
@@ -134,6 +146,7 @@
     #send-button:hover { background-color: #800000; }
     #send-button:disabled { background-color: #bbb; cursor: not-allowed; }
 
+    /* Modal */
     .modal {
       position: fixed;
       top: 0; left: 0;
@@ -223,12 +236,15 @@
     <div>
       <h1>MOR 565 AI Teaching Assistant</h1>
       <p>Part of the USC Marshall AI Strategy Initiative</p>
-      <p class="engineered-by">Engineered by <strong>Ty Keough</strong></p>
+      <p class="engineered-by">
+        Engineered by 
+        <a href="https://www.linkedin.com/in/tykeough/" target="_blank">Ty Keough</a>, Teaching Assistant
+      </p>
     </div>
     <img src="/static/USC_Marshall_Logo.png" alt="USC Marshall Logo" class="header-logo" />
   </header>
 
-  <!-- ===== Executive Greeting Modal ===== -->
+  <!-- Executive Greeting Modal -->
   <div id="intro-modal" class="modal">
     <div class="modal-content">
       <span class="close-x" onclick="closeModal()">×</span>
@@ -247,7 +263,7 @@
 
       <h3>Purpose</h3>
       <p>
-        The AI Teaching Assistant is designed to enhance strategic thinking and reflection by providing contextual explanations, 
+        The AI Teaching Assistant enhances strategic thinking and reflection by providing contextual explanations, 
         conceptual frameworks, and guidance drawn directly from official MOR 565 materials. 
         It promotes deeper understanding and disciplined application of alliance strategy concepts — not assignment completion.
       </p>
