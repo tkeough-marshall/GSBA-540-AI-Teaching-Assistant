@@ -32,6 +32,24 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 openai.api_key = OPENAI_API_KEY
 
 # ==============================
+# 📘 Load System Prompt
+# ==============================
+def load_system_prompt(filepath="system_message.txt"):
+    """Reads the system message from an external file."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        # Fallback if file missing or unreadable
+        return (
+            "You are a helpful assistant that answers questions based "
+            "strictly using the provided context. "
+            "If the context doesn't contain enough information, say so clearly."
+        )
+
+system_prompt = load_system_prompt()
+
+# ==============================
 # 🌐 Routes
 # ==============================
 
@@ -80,12 +98,6 @@ def chat():
         # =======================================
         # 💬 Step 4: Generate answer with GPT
         # =======================================
-        system_prompt = (
-            "You are a helpful assistant that answers questions based "
-            "strictly using the provided context. "
-            "If the context doesn't contain enough information, say so clearly."
-        )
-
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {user_input}"}
