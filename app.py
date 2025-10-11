@@ -63,7 +63,7 @@ def static_files(filename):
 
 @app.route("/favicon.ico")
 def favicon():
-    return send_from_directory("static", "USC_Marshall_Logo_Square.jpg")
+    return send_from_directory("static", "favicon.ico")
 
 
 @app.route("/chat", methods=["POST"])
