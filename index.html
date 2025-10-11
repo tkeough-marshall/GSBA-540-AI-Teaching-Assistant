@@ -87,22 +87,12 @@
       text-decoration: none;
       font-weight: 600;
       font-size: 0.95rem;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      position: relative;
       transition: opacity 0.2s ease;
     }
 
     .nav-links a:hover {
       text-decoration: underline;
       opacity: 0.9;
-    }
-
-    .lock-icon {
-      font-size: 0.9rem;
-      color: white;
-      opacity: 0.7;
     }
 
     @media (max-width: 600px) {
@@ -112,7 +102,7 @@
       .nav-links { gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end; }
     }
 
-    /* ===== CHAT AREA ===== */
+    /* ===== CHAT ===== */
     #chat-wrapper {
       display: flex;
       justify-content: center;
@@ -200,7 +190,7 @@
     #send-button:hover { background-color: #800000; }
     #send-button:disabled { background-color: #bbb; cursor: not-allowed; }
 
-    /* ===== MODAL ===== */
+    /* ===== MODAL (original style) ===== */
     .modal {
       position: fixed;
       top: 0; left: 0;
@@ -232,6 +222,18 @@
       padding-bottom: 0.5rem;
     }
 
+    .modal h3 {
+      margin-top: 1.5rem;
+      color: #2b2b2b;
+      font-size: 1.1rem;
+    }
+
+    .modal p {
+      font-size: 1rem;
+      line-height: 1.65;
+      margin-top: 0.5rem;
+    }
+
     .close-x {
       position: absolute;
       top: 12px;
@@ -243,6 +245,32 @@
     }
 
     .close-x:hover { color: #800000; }
+
+    .contact-info {
+      margin-top: 2rem;
+      font-size: 0.95rem;
+      color: #444;
+    }
+
+    .contact-info a {
+      color: #990000;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .close-btn {
+      background-color: #990000;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.7rem 1.4rem;
+      cursor: pointer;
+      font-weight: 600;
+      float: right;
+      margin-top: 1.8rem;
+    }
+
+    .close-btn:hover { background-color: #800000; }
   </style>
 </head>
 
@@ -264,7 +292,7 @@
       <nav class="nav-links">
         <a href="#">About</a>
         <a href="#">AI Assistant</a>
-        <a href="#"><span class="lock-icon">🔒</span> Upload Materials</a>
+        <a href="#">Upload Materials</a>
       </nav>
     </div>
   </header>
@@ -277,19 +305,20 @@
 
       <p>
         This digital assistant supports <strong>MOR 565: Alliances & Cooperative Strategy (Spring 2025)</strong>, taught by 
-        <strong>Professor Kyle Mayer</strong> with support from <strong>Ty Keough</strong>, at the 
+        <strong>Professor Kyle Mayer</strong> with support from <strong>Ty Keough, Teaching Assistant</strong>, at the 
         <strong>USC Marshall School of Business</strong>.
       </p>
 
       <p>
-        Developed as part of the <strong>Marshall AI Strategy Initiative</strong>, this system blends advanced language models 
-        with curated course materials to create an intelligent, retrieval-based learning companion.
+        Developed as part of the <strong>Marshall AI Strategy Initiative</strong>, this system represents a new model for academic engagement — 
+        blending advanced language models with curated course materials to create an intelligent, retrieval-based learning companion.
       </p>
 
       <h3>Purpose</h3>
       <p>
-        The AI Teaching Assistant enhances strategic thinking and reflection by providing contextual explanations 
-        and guidance drawn directly from official MOR 565 materials.
+        The AI Teaching Assistant enhances strategic thinking and reflection by providing contextual explanations, 
+        conceptual frameworks, and guidance drawn directly from official MOR 565 materials. 
+        It promotes deeper understanding and disciplined application of alliance strategy concepts — not assignment completion.
       </p>
 
       <h3>Principles</h3>
@@ -298,6 +327,13 @@
         • Maintains an MBA-level standard of clarity, professionalism, and analytical rigor.<br>
         • Uses only verified course content and does not fabricate information.<br>
         • Defers all grading, policy, and administrative matters to Professor Mayer.
+      </p>
+
+      <h3>About the Project</h3>
+      <p>
+        This assistant is part of USC Marshall’s broader effort to responsibly integrate generative AI into graduate business education — 
+        focusing on augmentation, transparency, and human-centered design. It demonstrates how retrieval-augmented workflows 
+        can support applied learning and strategic reasoning at scale.
       </p>
 
       <div class="contact-info">
