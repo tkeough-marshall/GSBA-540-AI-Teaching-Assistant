@@ -1,0 +1,8 @@
+openai
+supabase
+python-dotenv
+pymupdf
+python-docx
+python-pptx
+tqdm
+tk
