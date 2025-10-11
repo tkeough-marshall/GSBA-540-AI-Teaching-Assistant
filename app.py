@@ -103,28 +103,51 @@ def chat():
         # 🧩 Step 3: Build Context Using Metadata Fields
         # =======================================
         context_blocks = []
+        sources = set()  # Track unique filenames
+
+        print("\n--- Retrieved Matches ---")
         for m in matches:
             content = m.get("content", "").strip()
             source = m.get("source_file", "Unknown")
             chunk_index = m.get("chunk_index", "N/A")
             file_type = m.get("file_type", "N/A")
+            similarity = m.get("similarity", 0.0)
+
+            print(f"{source} | {file_type} | similarity={similarity:.3f}")
 
             if content:
-                # Match your system_message convention exactly
                 block = (
                     f"[source_file: {source} | file_type: {file_type} | chunk_index: {chunk_index}]\n"
                     f"{content}"
                 )
                 context_blocks.append(block)
+                sources.add(source)
 
+        print("--- End Matches ---\n")
+
+        # Join all chunks into a single context
         context = "\n\n".join(context_blocks)
+
+        # Format Sources for final response
+        source_list = sorted(sources)
+        formatted_sources = (
+            f"**Sources:** " + ", ".join(f"`{s}`" for s in source_list)
+            if source_list else "**Sources:** _No course documents were relevant to this response._"
+        )
 
         # =======================================
         # 💬 Step 4: Construct Chat Messages
         # =======================================
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"{context}\n\nQuestion: {user_input}"}
+            {
+                "role": "user",
+                "content": (
+                    f"Answer the question using only the context below.\n\n"
+                    f"---\n{context}\n---\n\n"
+                    f"Question: {user_input}"
+                ),
+            },
         ]
 
         # =======================================
@@ -141,7 +164,9 @@ def chat():
         # =======================================
         # ✅ Step 6: Return Final Output
         # =======================================
-        return jsonify({"response": answer})
+        return jsonify({
+            "response": f"{answer}\n\n{formatted_sources}"
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
