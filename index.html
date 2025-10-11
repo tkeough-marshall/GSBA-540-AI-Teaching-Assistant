@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>MOR 565 AI Teaching Assistant</title>
+  <link rel="icon" type="image/jpeg" href="/static/USC_Marshall_Logo_Square.jpg" />
 
   <style>
     body {
@@ -116,6 +117,20 @@
       align-self: flex-start;
       background-color: #f2f2f2;
       border: 1px solid #ddd;
+    }
+
+    /* ===== LOADER ANIMATION ===== */
+    .typing {
+      display: inline-block;
+      font-style: italic;
+      opacity: 0.8;
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      0% { opacity: 0.2; }
+      50% { opacity: 1; }
+      100% { opacity: 0.2; }
     }
 
     #input-area {
@@ -242,7 +257,9 @@
       <p>Part of the USC Marshall AI Strategy Initiative</p>
       <p class="engineered-by">
         Engineered by 
-        <a href="https://www.linkedin.com/in/tykeough/" target="_blank">Ty Keough</a>, Teaching Assistant
+        <a href="https://www.linkedin.com/in/tykeough/" target="_blank">Ty Keough</a>, 
+        <a href="mailto:tkeough@marshall.usc.edu">tkeough@marshall.usc.edu</a>
+        — Teaching Assistant
       </p>
     </div>
     <img src="/static/USC_Marshall_Logo_White.png" alt="USC Marshall Logo" class="header-logo" />
@@ -332,7 +349,7 @@
 
       const typing = document.createElement("div");
       typing.className = "chat-message bot typing";
-      typing.textContent = "Typing...";
+      typing.textContent = "Analyzing...";
       chatContainer.appendChild(typing);
 
       try {
