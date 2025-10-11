@@ -21,7 +21,7 @@ VECTOR_DIM = 3072
 TOP_K = 10  # Number of chunks to retrieve
 
 # Flask App Setup
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__, static_folder="static", static_url_path="/static")
 CORS(app)
 
 # Init Clients
