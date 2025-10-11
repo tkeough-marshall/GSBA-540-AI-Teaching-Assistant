@@ -16,13 +16,49 @@
     }
 
     header {
+      position: relative;
       background-color: #990000;
       color: #fff;
-      padding: 1rem 2rem;
-      font-size: 1.75rem;
-      font-weight: 600;
+      padding: 1rem 2rem 0.5rem 2rem;
       border-bottom: 4px solid #ffc72c;
       flex-shrink: 0;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      font-weight: 600;
+    }
+
+    header p {
+      margin: 0.25rem 0 0 0;
+      font-size: 0.9rem;
+      opacity: 0.85;
+      font-weight: 400;
+    }
+
+    .header-logo {
+      position: absolute;
+      right: 1.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 40px;
+      width: auto;
+    }
+
+    @media (max-width: 600px) {
+      .header-logo {
+        height: 30px;
+        right: 1rem;
+      }
+
+      header h1 {
+        font-size: 1.5rem;
+      }
+
+      header p {
+        font-size: 0.85rem;
+      }
     }
 
     #chat-wrapper {
@@ -52,14 +88,6 @@
       border-radius: 6px;
       line-height: 1.5;
       word-break: break-word;
-    }
-
-    .chat-message p {
-      margin: 0.5rem 0;
-    }
-
-    .chat-message ul, .chat-message ol {
-      margin: 0.5rem 0 0.5rem 1.25rem;
     }
 
     .user {
@@ -135,7 +163,11 @@
   </style>
 </head>
 <body>
-  <header>MOR 565 Digital Teaching Assistant</header>
+  <header>
+    <h1>MOR 565 Digital Teaching Assistant</h1>
+    <p>Part of the USC Marshall AI Strategy Initiative</p>
+    <img src="USC_Marshall_logo_white.png" alt="USC Marshall Logo" class="header-logo" />
+  </header>
 
   <div id="chat-wrapper">
     <div id="chat-container"></div>
