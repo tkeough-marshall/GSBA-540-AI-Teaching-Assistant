@@ -19,12 +19,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EMBED_MODEL = "text-embedding-3-large"
 CHAT_MODEL = "gpt-4.1-mini"  # compact + fast
 VECTOR_DIM = 3072
-TOP_K = 8  # number of chunks to retrieve from Supabase
+TOP_K = 15  # number of chunks to retrieve from Supabase
 
 # ==============================
 # 🚀 Flask App Setup
 # ==============================
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 CORS(app)
 
 # Init clients
@@ -40,7 +40,6 @@ def load_system_prompt(filepath="system_message.txt"):
         with open(filepath, "r", encoding="utf-8") as f:
             return f.read().strip()
     except Exception:
-        # Fallback if file missing or unreadable
         return (
             "You are a helpful assistant that answers questions based "
             "strictly using the provided context. "
@@ -55,8 +54,13 @@ system_prompt = load_system_prompt()
 
 @app.route("/")
 def index():
-    """Serve the index.html file from the root directory."""
+    """Serve the main HTML page."""
     return send_from_directory(".", "index.html")
+
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    """Serve static assets like images, CSS, etc."""
+    return send_from_directory("static", filename)
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -113,6 +117,7 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # ==============================
 # 🔌 Render Port Binding
