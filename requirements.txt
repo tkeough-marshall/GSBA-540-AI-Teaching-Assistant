@@ -6,7 +6,7 @@ flask-cors
 openai
 
 # Supabase client
-supabase-py
+supabase
 
 # Environment variable loader
 python-dotenv
