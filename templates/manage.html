@@ -55,13 +55,16 @@ tbody tr:hover{background:#fff6f6}
 /* password overlay */
 #authOverlay {
   position: fixed;
-  inset: 0;
+  top: 80px; /* keeps header visible */
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 1500;
 }
 #authBox {
   text-align: center;
@@ -99,6 +102,9 @@ tbody tr:hover{background:#fff6f6}
 </head>
 
 <body>
+
+{% include '_header.html' %}
+
 <div id="authOverlay">
   <div id="authBox">
     <h2>Restricted Access</h2>
@@ -109,17 +115,18 @@ tbody tr:hover{background:#fff6f6}
   </div>
 </div>
 
-{% include '_header.html' %}
-
 <div class="frame">
   <h2>Manage Uploaded Materials</h2>
   <div class="rule"></div>
 
   <div id="drop" class="drop" ondrop="onDrop(event)" ondragover="onDrag(event)" ondragleave="onLeave(event)">
-    <div class="muted" style="margin-bottom:6px">Drag and drop files here</div>
+    <div class="muted" style="margin-bottom:6px">Drag and drop your files here</div>
     <div class="muted" style="margin-bottom:10px">or</div>
     <input id="fileInput" type="file" multiple hidden />
     <button class="btn" onclick="document.getElementById('fileInput').click()">Select Files</button>
+    <div style="margin-top:12px;font-size:0.9rem;color:#666;">
+      Supported filetypes: <strong>.pdf, .pptx, .docx, .txt, .md, .html, .htm, .mp3, .mp4, .wav, .ogg, .m4a</strong>
+    </div>
   </div>
 
   <div class="bar">
@@ -150,7 +157,7 @@ tbody tr:hover{background:#fff6f6}
 <div class="notice" id="notice"></div>
 
 <script>
-const PASS = "marshall565"; // change as needed
+const PASS = "marshall565";
 const $ = s => document.querySelector(s);
 
 if (sessionStorage.getItem("authOK")) {
