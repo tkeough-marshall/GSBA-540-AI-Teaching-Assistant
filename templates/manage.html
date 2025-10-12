@@ -77,9 +77,9 @@ tbody tr:hover{background:#fff6f6}
 <script>
 let files = [];
 const selected = new Set();
-
-/* ---- helpers ---- */
 const $ = s => document.querySelector(s);
+
+/* ---- progress ---- */
 function showProgress(name,pct){
   const bar=$('#progress');
   bar.style.display="flex";
@@ -162,34 +162,57 @@ async function deleteFile(name){
   renderFiles();
 }
 
-/* ---- upload ---- */
+/* ---- drag & drop ---- */
 function onDrag(e){ e.preventDefault(); $('#drop').classList.add('drag'); }
 function onLeave(e){ e.preventDefault(); $('#drop').classList.remove('drag'); }
-function onDrop(e){ e.preventDefault(); onLeave(e); [...e.dataTransfer.files].forEach(f=>uploadFile(f)); }
-$('#fileInput').addEventListener('change', e=>{
-  [...e.target.files].forEach(f=>uploadFile(f)); e.target.value="";
+
+/* ---- upload handling ---- */
+async function uploadFilesSequentially(fileList){
+  for(const file of fileList){
+    await uploadFile(file);
+  }
+}
+
+$('#fileInput').addEventListener('change', async e=>{
+  const list = [...e.target.files];
+  e.target.value="";
+  if(!list.length) return;
+  await uploadFilesSequentially(list);
 });
 
+function onDrop(e){
+  e.preventDefault();
+  onLeave(e);
+  const list = [...e.dataTransfer.files];
+  if(!list.length) return;
+  uploadFilesSequentially(list);
+}
+
 function uploadFile(file){
-  const xhr=new XMLHttpRequest();
-  xhr.open("POST","/upload");
-  xhr.upload.onprogress=e=>{
-    if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
-  };
-  xhr.onload=()=>{
-    if(xhr.status===200){
-      try{
-        const data=JSON.parse(xhr.responseText);
-        files.unshift({file_name:data.file_name,file_type:data.file_type,uploaded_at:Date.now()});
-      }catch{
-        files.unshift({file_name:file.name,file_type:file.name.split('.').pop(),uploaded_at:Date.now()});
+  return new Promise(resolve=>{
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST","/upload");
+    xhr.upload.onprogress = e=>{
+      if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
+    };
+    xhr.onload = ()=>{
+      if(xhr.status===200){
+        try{
+          const data=JSON.parse(xhr.responseText);
+          files.unshift({file_name:data.file_name,file_type:data.file_type,uploaded_at:Date.now()});
+        }catch{
+          files.unshift({file_name:file.name,file_type:file.name.split('.').pop(),uploaded_at:Date.now()});
+        }
+        renderFiles();
+      }else{
+        alert(`Upload failed: ${file.name}`);
       }
-      renderFiles();
-    }else alert("Upload failed");
-  };
-  const form=new FormData();
-  form.append("file",file);
-  xhr.send(form);
+      resolve();
+    };
+    const form = new FormData();
+    form.append("file", file);
+    xhr.send(form);
+  });
 }
 </script>
 </body>

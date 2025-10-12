@@ -5,8 +5,6 @@ from flask_cors import CORS
 from supabase import create_client
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
-
-# Parsers
 import fitz  # PyMuPDF
 from docx import Document as DocxDocument
 from pptx import Presentation
@@ -16,8 +14,7 @@ from openai import OpenAI
 os.environ["PYTHONUNBUFFERED"] = "1"
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(line_buffering=True)
-def log(msg: str):
-    print(msg, flush=True)
+def log(msg: str): print(msg, flush=True)
 
 # -------- env --------
 load_dotenv()
@@ -74,7 +71,7 @@ def extract_docx_text(path: str) -> str:
         log(f"❌ python-docx failed: {e}")
         traceback.print_exc()
 
-    # fallback XML
+    # Fallback XML
     try:
         with ZipFile(path, "r") as z:
             xml_files = [f for f in z.namelist() if f.startswith("word/") and f.endswith(".xml")]
@@ -84,12 +81,10 @@ def extract_docx_text(path: str) -> str:
                 combined += " " + re.sub(r"<[^>]+>", " ", data)
             combined = re.sub(r"\s+", " ", combined)
             if len(combined.strip()) > len("\n".join(out)):
-                log(f"⚙️ deep XML fallback extracted {len(combined)} chars from {len(xml_files)} XML files")
+                log(f"⚙️ deep XML fallback extracted {len(combined)} chars")
                 return combined
     except Exception as e:
         log(f"❌ deep fallback failed: {e}")
-        traceback.print_exc()
-
     return "\n".join(out)
 
 def extract_pptx_text(path: str) -> str:
@@ -116,16 +111,12 @@ def extract_pptx_text(path: str) -> str:
 def extract_text(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     try:
-        if ext == ".pdf":
-            return extract_pdf_text(path)
-        if ext == ".docx":
-            return extract_docx_text(path)
-        if ext == ".pptx":
-            return extract_pptx_text(path)
+        if ext == ".pdf": return extract_pdf_text(path)
+        if ext == ".docx": return extract_docx_text(path)
+        if ext == ".pptx": return extract_pptx_text(path)
         return ""
     except Exception as e:
         log(f"❌ extract_text failed for {path}: {e}")
-        traceback.print_exc()
         return ""
 
 # ==============================
@@ -133,17 +124,14 @@ def extract_text(path: str) -> str:
 # ==============================
 def chunk_text(text: str, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     words = text.split()
-    if not words:
-        return
+    if not words: return
     if len(words) <= chunk_size:
-        yield " ".join(words)
-        return
+        yield " ".join(words); return
     step = max(1, chunk_size - overlap)
     for i in range(0, len(words), step):
         chunk = words[i:i+chunk_size]
         yield " ".join(chunk)
-        if i + chunk_size >= len(words):
-            break
+        if i + chunk_size >= len(words): break
 
 def embed_text(text: str):
     resp = oai.embeddings.create(model=EMBED_MODEL, input=[text])
@@ -156,11 +144,9 @@ def process_and_store(path: str, filename: str):
     log(f"⚙️ process_and_store for {filename}")
     text = extract_text(path)
     log(f"📄 Extracted {len(text)} characters")
-    if not text.strip():
-        return {"status": "no_text"}
+    if not text.strip(): return {"status": "no_text"}
 
     chunks = list(chunk_text(text))
-    log(f"🧩 {len(chunks)} chunks")
     total = 0
     for i, chunk in enumerate(chunks):
         try:
@@ -168,16 +154,11 @@ def process_and_store(path: str, filename: str):
             supabase.table("documents").insert({
                 "content": chunk,
                 "embedding": emb,
-                "metadata": {
-                    "source_file": filename,
-                    "chunk_index": i,
-                    "file_type": os.path.splitext(filename)[1].lower()
-                }
+                "metadata": {"source_file": filename, "chunk_index": i, "file_type": os.path.splitext(filename)[1].lower()}
             }).execute()
             total += 1
         except Exception as e:
             log(f"❌ insert chunk {i}: {e}")
-            traceback.print_exc()
     log(f"✅ embedded {total} chunks for {filename}")
     return {"status": "success", "chunks": total}
 
@@ -185,25 +166,23 @@ def process_and_store(path: str, filename: str):
 # Routes
 # ==============================
 @app.route("/")
-def index():
-    return send_from_directory(".", "index.html")
+def index(): return send_from_directory(".", "index.html")
 
 @app.route("/manage")
-def manage():
-    return send_from_directory("templates", "manage.html")
+def manage(): return send_from_directory("templates", "manage.html")
 
 @app.route("/api/files")
 def list_files():
-    """List actual files directly from Supabase Storage."""
+    """List flat files from Supabase bucket root."""
     try:
         items = supabase.storage.from_(BUCKET).list("", {"limit": 1000})
         files = []
         for f in items:
-            if not isinstance(f, dict):
-                continue
+            if not isinstance(f, dict) or not f.get("name"): continue
+            if f["name"].endswith("/"): continue  # skip folder placeholders
             files.append({
-                "file_name": f.get("name"),
-                "file_type": os.path.splitext(f.get("name", ""))[1],
+                "file_name": f["name"],
+                "file_type": os.path.splitext(f["name"])[1],
                 "uploaded_at": f.get("created_at") or f.get("updated_at")
             })
         return jsonify(files)
@@ -214,36 +193,32 @@ def list_files():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    """Upload to Supabase Storage and embed content."""
+    """Upload file flat into bucket and embed it."""
     file = request.files.get("file")
-    if not file:
-        return jsonify({"error": "No file provided"}), 400
+    if not file: return jsonify({"error": "No file provided"}), 400
 
     name = secure_filename(file.filename)
     data = file.read()
     log(f"✅ Upload received: {name} | {len(data)} bytes")
 
     tmp_path = os.path.join(tempfile.gettempdir(), name)
-    with open(tmp_path, "wb") as f:
-        f.write(data)
+    with open(tmp_path, "wb") as f: f.write(data)
 
     try:
-        res = supabase.storage.from_(BUCKET).upload(name, data, {"upsert": True})
+        res = supabase.storage.from_(BUCKET).upload(name, data, upsert=True)
         if hasattr(res, "error") and res.error is not None:
             raise Exception(res.error.message)
-        log(f"📦 Uploaded {name} to Supabase Storage")
+        log(f"📦 Uploaded {name} to Supabase Storage root")
     except Exception as e:
         log(f"❌ upload error: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-    # safer embedding stage
     try:
         result = process_and_store(tmp_path, name)
         log(f"🧠 Embedding result: {result}")
     except Exception as e:
-        log(f"⚠️ embedding stage failed: {e}")
-        traceback.print_exc()
+        log(f"⚠️ embedding failed: {e}")
         result = {"status": "embedding_failed", "error": str(e)}
 
     return jsonify({
@@ -255,7 +230,7 @@ def upload_file():
 
 @app.route("/delete/<name>", methods=["DELETE"])
 def delete_file(name):
-    """Delete file from storage and clean up embeddings."""
+    """Delete from storage and embeddings."""
     try:
         res = supabase.storage.from_(BUCKET).remove([name])
         if hasattr(res, "error") and res.error is not None:
@@ -271,8 +246,7 @@ def delete_file(name):
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message", "").strip()
-    if not user_input:
-        return jsonify({"error": "No input provided"}), 400
+    if not user_input: return jsonify({"error": "No input provided"}), 400
     try:
         emb = oai.embeddings.create(model=EMBED_MODEL, input=[user_input]).data[0].embedding
         resp = supabase.rpc("match_documents", {"query_embedding": emb, "match_count": TOP_K}).execute()
@@ -283,17 +257,15 @@ def chat():
         for m in matches:
             c = m.get("content", "").strip()
             s = m.get("source_file", "Unknown")
-            if c:
-                blocks.append(f"[source_file: {s}]\n{c}")
-                srcs.add(s)
+            if c: blocks.append(f"[source_file: {s}]\n{c}"); srcs.add(s)
         context = "\n\n".join(blocks)
         src_txt = "**Sources:** " + ", ".join(f"`{s}`" for s in sorted(srcs))
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Answer using only this context:\n\n{context}\n\nQuestion: {user_input}"}
-        ]
-        ans = oai.chat.completions.create(model=CHAT_MODEL, messages=messages, temperature=0.2)\
-              .choices[0].message.content.strip()
+        ans = oai.chat.completions.create(model=CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"Answer using only this context:\n\n{context}\n\nQuestion: {user_input}"}
+            ],
+            temperature=0.2).choices[0].message.content.strip()
         return jsonify({"response": f"{ans}\n\n{src_txt}"})
     except Exception as e:
         log(f"❌ chat error: {e}")
