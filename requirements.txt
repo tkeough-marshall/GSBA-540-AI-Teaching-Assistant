@@ -1,8 +1,8 @@
 flask
 flask-cors
-openai
 supabase
 python-dotenv
+openai
 werkzeug
 pymupdf
 python-docx
