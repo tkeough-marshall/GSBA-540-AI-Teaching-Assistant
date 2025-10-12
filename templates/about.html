@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>About — MOR 565 AI Teaching Assistant</title>
+<link rel="icon" href="/static/favicon.ico">
 <style>
 :root {
   --cardinal:#990000; --gold:#ffd700; --ink:#222; --muted:#666; --bg:#fafafa;
@@ -12,11 +13,6 @@ body {
   margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   background:var(--bg); color:var(--ink);
 }
-header {
-  background:var(--cardinal); color:#fff;
-  padding:16px 24px; display:flex; justify-content:space-between; align-items:center;
-}
-header a {color:var(--gold); text-decoration:none;}
 .main {
   max-width:1000px; margin:40px auto; background:#fff; border-radius:12px;
   box-shadow:0 2px 10px rgba(0,0,0,.08); display:flex; padding:40px; gap:40px;
@@ -31,13 +27,7 @@ p {line-height:1.6; margin-bottom:1em;}
 </style>
 </head>
 <body>
-<header>
-  <span>MOR 565 AI Teaching Assistant</span>
-  <nav>
-    <a href="/">AI Assistant</a> | 
-    <a href="/manage">Manage Materials</a>
-  </nav>
-</header>
+{% include '_header.html' %}
 
 <div class="main">
   <img src="/static/keough_headshot.jpg" alt="Ty Keough Headshot">
