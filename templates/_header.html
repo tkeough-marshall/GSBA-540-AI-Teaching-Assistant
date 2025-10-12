@@ -8,14 +8,14 @@ header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 header h1 {
-  display: block;
-  visibility: visible;
   margin: 0;
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 header p {
@@ -49,13 +49,9 @@ header p {
 }
 
 .header-logo {
-  height: 48px;
+  height: 50px;
   width: auto;
   object-fit: contain;
-  display: block;
-  margin-left: 1rem;
-  background: none;
-  border: none;
   mix-blend-mode: lighten;
   filter: brightness(1.05);
 }
@@ -88,7 +84,7 @@ header p {
 </style>
 
 <header>
-  <div class="header-left">
+  <div style="max-width: 70%;">
     <h1>MOR 565 AI Teaching Assistant</h1>
     <p>Part of the USC Marshall AI Strategy Initiative</p>
     <div class="engineered-by">
@@ -97,9 +93,8 @@ header p {
       — Teaching Assistant
     </div>
   </div>
-
   <div class="header-right">
-    <img src="/static/USC_Marshall_Logo_White.png" alt="USC Marshall Logo" class="header-logo" />
+    <img src="/static/USC_Marshall_Logo_White.png" alt="USC Marshall" class="header-logo" />
     <nav class="nav-links">
       <a href="/about">About</a>
       <a href="/">AI Assistant</a>
