@@ -2,367 +2,322 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Manage Course Files</title>
   <style>
-    body {
-      font-family: "Inter", system-ui, sans-serif;
-      background-color: #f8f8f8;
-      margin: 0;
-      padding: 0;
-      color: #222;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+    :root{
+      --cardinal:#990000; --gold:#ffd700; --ink:#222; --muted:#777;
+      --bg:#f8f8f8; --panel:#fff; --line:#e7e7e7;
     }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);}
+    header{background:var(--cardinal);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+    header a{color:var(--gold);text-decoration:none}
+    /* Fixed main frame */
+    .frame{max-width:1100px;margin:28px auto;background:var(--panel);border-radius:12px;
+           box-shadow:0 2px 12px rgba(0,0,0,.08);padding:22px;min-height:720px;display:flex;flex-direction:column}
+    h2{margin:0 0 8px;color:var(--cardinal)}
+    .rule{height:2px;background:var(--gold);width:100%;margin:6px 0 18px;border-radius:2px}
 
-    header {
-      background-color: #990000;
-      color: white;
-      padding: 16px 24px;
-      font-size: 1.2em;
-      font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    header a {
-      color: #ffd700;
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    main {
-      display: flex;
-      flex: 1;
-      max-width: 1200px;
-      margin: 32px auto;
-      gap: 20px;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 220px;
-      background: #fff;
-      border-radius: 10px;
-      padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      display: flex;
-      flex-direction: column;
-      height: fit-content;
-    }
-
-    .sidebar h3 {
-      font-size: 1em;
-      color: #990000;
-      border-bottom: 2px solid #ffd700;
-      margin-bottom: 10px;
-      padding-bottom: 4px;
-    }
-
-    .folder {
-      padding: 8px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9em;
-      margin-bottom: 4px;
-      transition: background 0.2s ease;
-    }
-
-    .folder.active {
-      background-color: #fff6f6;
-      font-weight: 600;
-      color: #990000;
-    }
-
-    .folder:hover {
-      background-color: #f5f5f5;
-    }
-
-    .folder-actions {
-      margin-top: 10px;
-    }
-
-    .folder-actions button {
-      background: #990000;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 0.8em;
-      cursor: pointer;
-    }
-
-    /* Main content */
-    .content {
-      flex: 1;
-      background: #fff;
-      border-radius: 10px;
-      padding: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-
-    h2 {
-      color: #990000;
-      border-bottom: 2px solid #ffd700;
-      padding-bottom: 8px;
-      margin-bottom: 16px;
-    }
-
-    .upload-box {
-      border: 2px dashed #ccc;
-      border-radius: 8px;
-      padding: 30px;
-      text-align: center;
-      margin-bottom: 12px;
-      background-color: #fafafa;
-      transition: border 0.2s ease, background-color 0.2s ease;
-    }
-
-    .upload-box.dragover {
-      border-color: #990000;
-      background-color: #fff6f6;
-    }
-
-    .btn {
-      background-color: #990000;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9em;
-      transition: background 0.2s ease;
-    }
-    .btn:hover { background-color: #b11226; }
-
-    #progressContainer { margin-top: 10px; margin-bottom: 20px; }
-    progress { width: 100%; height: 10px; appearance: none; }
-    progress::-webkit-progress-bar { background-color: #eee; border-radius: 10px; }
-    progress::-webkit-progress-value { background-color: #b11226; border-radius: 10px; }
+    /* Dropzone */
+    .drop{border:2px dashed #cfcfcf;border-radius:10px;padding:22px;text-align:center;background:#fafafa;margin-bottom:12px}
+    .drop.drag{border-color:var(--cardinal);background:#fff6f6}
+    .btn{background:var(--cardinal);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:.92rem;cursor:pointer}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn.secondary{background:#f3f3f3;color:#333}
+    .btn.danger{background:#b11226}
 
     /* Toolbar */
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
+    .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
+    .bar input[type="text"]{flex:1;border:1px solid #d5d5d5;border-radius:8px;padding:9px 12px}
 
-    .toolbar input[type="text"] {
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 0.9em;
-      flex: 1;
-    }
+    /* Breadcrumb */
+    .crumb{font-size:.9rem;color:#444;margin-bottom:8px}
+    .crumb a{color:var(--cardinal);text-decoration:none;cursor:pointer}
+    .crumb span.sep{color:#bbb;margin:0 6px}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      border-radius: 8px;
-      overflow: hidden;
-    }
+    /* Progress */
+    .progress{display:none;align-items:center;gap:10px;margin:8px 0}
+    .progress .track{flex:1;height:10px;background:#eee;border-radius:8px;overflow:hidden}
+    .progress .fill{height:100%;width:0;background:var(--cardinal);transition:width .15s linear}
 
-    thead { background-color: #f3f3f3; }
-    th, td {
-      padding: 10px 12px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-      font-size: 0.9em;
-    }
-
-    tbody tr:hover { background-color: #fff6f6; }
-
-    .delete-btn {
-      background-color: #fff0f0;
-      color: #990000;
-      border: 1px solid #f1d2d2;
-      border-radius: 6px;
-      padding: 4px 10px;
-      cursor: pointer;
-      font-size: 0.8em;
-    }
-    .delete-btn:hover { background-color: #ffecec; }
-
-    footer {
-      text-align: center;
-      color: #777;
-      padding: 16px;
-      font-size: 0.9em;
-      border-top: 1px solid #eee;
-    }
+    /* Table */
+    table{width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden}
+    thead{background:#f6f6f6}
+    th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:.92rem}
+    tbody tr:hover{background:#fff6f6}
+    .muted{color:var(--muted)}
+    .icon{width:16px;height:16px;display:inline-block;margin-right:8px;vertical-align:-3px}
+    .icon.folder{border:2px solid var(--cardinal);border-top-left-radius:3px;border-top-right-radius:3px;border-bottom-left-radius:3px;position:relative}
+    .icon.folder:before{content:"";position:absolute;top:-6px;left:2px;width:10px;height:6px;background:var(--cardinal);border-top-left-radius:3px;border-top-right-radius:3px}
+    .row-actions{display:flex;gap:8px;justify-content:flex-end}
   </style>
 </head>
-
 <body>
   <header>
     <span>Course File Manager</span>
     <a href="/">← Back to Assistant</a>
   </header>
 
-  <main>
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <h3>Folders</h3>
-      <div id="folderList"></div>
-      <div class="folder-actions">
-        <button onclick="createFolder()">+ New Folder</button>
-      </div>
-    </aside>
+  <div class="frame">
+    <h2>Manage Uploaded Materials</h2>
+    <div class="rule"></div>
 
-    <!-- Main content -->
-    <section class="content">
-      <h2>Manage Uploaded Materials</h2>
+    <!-- Dropzone -->
+    <div id="drop" class="drop" ondrop="onDrop(event)" ondragover="onDrag(event)" ondragleave="onLeave(event)">
+      <div class="muted" style="margin-bottom:6px">Drag and drop files here</div>
+      <div class="muted" style="margin-bottom:10px">or</div>
+      <input id="fileInput" type="file" multiple hidden />
+      <button class="btn" onclick="document.getElementById('fileInput').click()">Select Files</button>
+    </div>
 
-      <div id="dropZone" class="upload-box"
-        ondrop="handleDrop(event)" ondragover="handleDrag(event)" ondragleave="handleLeave(event)">
-        <p>Drag and drop files here</p>
-        <p>or</p>
-        <input type="file" id="fileInput" style="display:none" multiple />
-        <button class="btn" onclick="document.getElementById('fileInput').click()">Select Files</button>
-      </div>
+    <!-- Toolbar -->
+    <div class="bar">
+      <input id="search" type="text" placeholder="Search files..." oninput="render()"/>
+      <button class="btn secondary" onclick="createFolder()">New Folder</button>
+      <select id="moveSelect" class="btn secondary" onchange="moveSelected(this)" disabled>
+        <option value="">Move to…</option>
+      </select>
+      <button id="bulkDelete" class="btn danger" onclick="deleteSelected()" disabled>Delete Selected</button>
+    </div>
 
-      <div id="progressContainer">
-        <progress id="uploadProgress" value="0" max="100" style="display:none;"></progress>
-      </div>
+    <!-- Breadcrumb -->
+    <div class="crumb" id="crumb"></div>
 
-      <div class="toolbar">
-        <input type="text" id="searchInput" placeholder="Search files..." oninput="filterFiles()" />
-        <button class="btn" onclick="deleteSelected()">Delete Selected</button>
-      </div>
+    <!-- Progress -->
+    <div class="progress" id="progress">
+      <span id="ptext" class="muted">Uploading…</span>
+      <div class="track"><div class="fill" id="pfill"></div></div>
+      <span id="pnum" class="muted">0%</span>
+    </div>
 
-      <table id="fileTable">
-        <thead>
-          <tr>
-            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" /></th>
-            <th>File Name</th>
-            <th>Type</th>
-            <th>Date Added</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="fileTableBody"></tbody>
-      </table>
-    </section>
-  </main>
+    <!-- Table -->
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"/></th>
+          <th>Name</th>
+          <th style="width:120px">Type</th>
+          <th style="width:220px">Date Added</th>
+          <th style="width:150px;text-align:right"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
 
-  <footer>
-    Managed securely via Supabase · USC Marshall AI Strategy Initiative
-  </footer>
+<script>
+/* ---------- client state (persisted) ---------- */
+const LS_FOLDERS = "ta_folders";
+const LS_FILEMAP = "ta_filemap"; // { fileName: "Folder/Sub" }
 
-  <script>
-    let filesCache = [];
-    let currentFolder = 'All Files';
-    let folders = ['All Files'];
+let folders = loadJSON(LS_FOLDERS) ?? ["All Files"];
+let fileFolder = loadJSON(LS_FILEMAP) ?? {}; // filename -> folder path
+let currentPath = []; // [] = All Files
+let files = []; // from /api/files
 
-    async function loadFiles() {
-      const res = await fetch('/api/files');
-      filesCache = await res.json();
-      renderFiles();
-      renderFolders();
+function saveState(){ saveJSON(LS_FOLDERS, folders); saveJSON(LS_FILEMAP, fileFolder); }
+function saveJSON(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch{} }
+function loadJSON(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch{ return null } }
+function pathToString(p){ return p.length? p.join("/") : "All Files"; }
+function allFolderPaths(){ return folders; }
+
+/* ---------- fetch & render ---------- */
+async function loadFiles(){
+  const res = await fetch("/api/files");
+  files = await res.json();
+  render();
+}
+
+function render(){
+  // toolbar state
+  const selected = [...document.querySelectorAll(".rowcheck:checked")];
+  document.getElementById("bulkDelete").disabled = selected.length===0;
+  document.getElementById("moveSelect").disabled = selected.length===0;
+
+  // breadcrumb
+  const crumb = document.getElementById("crumb");
+  crumb.innerHTML = "";
+  const root = document.createElement("a");
+  root.textContent = "All Files";
+  root.onclick = ()=>{ currentPath=[]; render(); };
+  crumb.appendChild(root);
+  let build=[];
+  currentPath.forEach((seg,i)=>{
+    crumb.appendChild(spanSep());
+    build.push(seg);
+    const a=document.createElement("a");
+    a.textContent=seg;
+    a.onclick=()=>{ currentPath=currentPath.slice(0,i+1); render(); };
+    crumb.appendChild(a);
+  });
+
+  // Move-to options
+  const sel = document.getElementById("moveSelect");
+  sel.innerHTML = `<option value="">Move to…</option>`;
+  for(const f of folders){
+    sel.insertAdjacentHTML("beforeend", `<option value="${f}">${f}</option>`);
+  }
+
+  // build data set for current folder
+  const here = pathToString(currentPath);
+  const q = (document.getElementById("search").value||"").toLowerCase();
+
+  // derive child folders of current path
+  const childFolders = folders
+    .filter(f => f.startsWith(here === "All Files" ? "" : here + "/"))
+    .map(f => f.replace(here === "All Files" ? "" : here + "/", ""))
+    .filter(x => x && !x.includes("/"))
+    .sort();
+
+  // files belonging exactly to current path
+  const fileRows = files.filter(f=>{
+    const assigned = fileFolder[f.file_name] || "All Files";
+    const inHere = (assigned === here);
+    const matches = f.file_name.toLowerCase().includes(q);
+    return inHere && matches;
+  }).sort((a,b)=>a.file_name.localeCompare(b.file_name));
+
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  // add folders as rows
+  for(const name of childFolders){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td></td>
+      <td><span class="icon folder"></span><a href="#" onclick="openFolder('${name}');return false;">${name}</a></td>
+      <td class="muted">Folder</td>
+      <td class="muted">—</td>
+      <td></td>`;
+    tbody.appendChild(tr);
+  }
+
+  // add file rows
+  if(fileRows.length===0 && childFolders.length===0){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td></td><td class="muted" colspan="4">No files found.</td>`;
+    tbody.appendChild(tr);
+  } else {
+    for(const f of fileRows){
+      const tr=document.createElement("tr");
+      tr.innerHTML=`
+        <td><input type="checkbox" class="rowcheck" data-name="${f.file_name}" onchange="render()"/></td>
+        <td>${f.file_name}</td>
+        <td>${f.file_type || "—"}</td>
+        <td>${f.uploaded_at ? new Date(f.uploaded_at).toLocaleString() : "—"}</td>
+        <td class="row-actions">
+          <button class="btn secondary" onclick="moveOne('${f.file_name}')">Move</button>
+          <button class="btn danger" onclick="deleteOne('${f.file_name}')">Delete</button>
+        </td>`;
+      tbody.appendChild(tr);
     }
+  }
 
-    function renderFolders() {
-      const list = document.getElementById('folderList');
-      list.innerHTML = '';
-      folders.forEach(f => {
-        const div = document.createElement('div');
-        div.className = 'folder' + (f === currentFolder ? ' active' : '');
-        div.textContent = f;
-        div.onclick = () => { currentFolder = f; renderFiles(); renderFolders(); };
-        list.appendChild(div);
-      });
-    }
+  // clear select-all state
+  const all = document.getElementById("selectAll");
+  all.checked = false;
+}
 
-    function createFolder() {
-      const name = prompt('Folder name:');
-      if (!name || folders.includes(name)) return;
-      folders.push(name);
-      renderFolders();
-    }
+function spanSep(){ const s=document.createElement("span"); s.textContent="›"; s.className="sep"; return s; }
+function openFolder(name){ currentPath = [...currentPath, name]; render(); }
 
-    function renderFiles() {
-      const body = document.getElementById('fileTableBody');
-      const search = document.getElementById('searchInput').value.toLowerCase();
-      body.innerHTML = '';
+/* ---------- folders (client-side only) ---------- */
+function createFolder(){
+  const base = pathToString(currentPath);
+  const name = prompt("Folder name:");
+  if(!name) return;
+  const full = (base==="All Files") ? name.trim() : `${base}/${name.trim()}`;
+  if(!full || folders.includes(full)) return;
+  folders.push(full);
+  saveState();
+  render();
+}
 
-      const filtered = filesCache.filter(f =>
-        f.file_name.toLowerCase().includes(search)
-      );
+function moveOne(file){
+  const dest = prompt("Move to folder (exact path). Existing:\n" + folders.join("\n"));
+  if(!dest) return;
+  if(!folders.includes(dest)){ alert("Folder does not exist."); return; }
+  fileFolder[file] = dest;
+  saveState();
+  render();
+}
 
-      if (filtered.length === 0) {
-        body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#777;">No files found.</td></tr>`;
-        return;
-      }
+function moveSelected(sel){
+  const dest = sel.value;
+  if(!dest){ sel.value=""; return; }
+  const names=[...document.querySelectorAll(".rowcheck:checked")].map(e=>e.dataset.name);
+  if(names.length===0){ sel.value=""; return; }
+  names.forEach(n=> fileFolder[n]=dest);
+  saveState();
+  sel.value="";
+  render();
+}
 
-      filtered.forEach(f => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td><input type="checkbox" class="file-check" data-name="${f.file_name}" /></td>
-          <td>${f.file_name}</td>
-          <td>${f.file_type || '—'}</td>
-          <td>${new Date(f.uploaded_at).toLocaleString()}</td>
-          <td><button class="delete-btn" data-name="${f.file_name}">Delete</button></td>
-        `;
-        body.appendChild(row);
-      });
-    }
+/* ---------- selection + bulk delete ---------- */
+function toggleAll(box){
+  document.querySelectorAll(".rowcheck").forEach(c=>c.checked=box.checked);
+  render();
+}
+async function deleteSelected(){
+  const names=[...document.querySelectorAll(".rowcheck:checked")].map(e=>e.dataset.name);
+  if(names.length===0) return;
+  await Promise.all(names.map(n=> fetch(`/delete/${n}`, {method:"DELETE"})));
+  names.forEach(n=> delete fileFolder[n]);
+  saveState();
+  loadFiles();
+}
+async function deleteOne(name){
+  await fetch(`/delete/${name}`, {method:"DELETE"});
+  delete fileFolder[name]; saveState();
+  loadFiles();
+}
 
-    function filterFiles() { renderFiles(); }
+/* ---------- uploads ---------- */
+document.getElementById("fileInput").addEventListener("change", e=>{
+  [...e.target.files].forEach(f=> uploadFile(f));
+  e.target.value="";
+});
+function onDrag(e){ e.preventDefault(); document.getElementById("drop").classList.add("drag"); }
+function onLeave(e){ e.preventDefault(); document.getElementById("drop").classList.remove("drag"); }
+function onDrop(e){
+  e.preventDefault(); onLeave(e);
+  [...e.dataTransfer.files].forEach(f=> uploadFile(f));
+}
 
-    function toggleSelectAll(box) {
-      document.querySelectorAll('.file-check').forEach(c => c.checked = box.checked);
-    }
+function showProgress(name, pct){
+  const bar=document.getElementById("progress");
+  const fill=document.getElementById("pfill");
+  const ptxt=document.getElementById("ptext");
+  const pnum=document.getElementById("pnum");
+  bar.style.display="flex";
+  ptxt.textContent = `Uploading ${name}`;
+  fill.style.width = `${pct}%`;
+  pnum.textContent = `${Math.round(pct)}%`;
+  if(pct>=100){ setTimeout(()=>{ bar.style.display="none"; fill.style.width="0%"; }, 600); }
+}
 
-    function deleteSelected() {
-      const selected = [...document.querySelectorAll('.file-check:checked')].map(c => c.dataset.name);
-      if (selected.length === 0) return alert('No files selected.');
-      selected.forEach(name => fetch(`/delete/${name}`, { method: 'DELETE' }));
-      setTimeout(loadFiles, 500);
-    }
+function currentFolderPath(){ return pathToString(currentPath); }
 
-    function uploadFile(file) {
-      const progress = document.getElementById('uploadProgress');
-      progress.style.display = 'block';
-      progress.value = 0;
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/upload');
-      xhr.upload.onprogress = e => { if (e.lengthComputable) progress.value = (e.loaded / e.total) * 100; };
-      xhr.onload = () => {
-        progress.value = 100;
-        setTimeout(() => progress.style.display = 'none', 500);
-        loadFiles();
-      };
-      const formData = new FormData();
-      formData.append('file', file);
-      xhr.send(formData);
-    }
-
-    document.addEventListener('click', e => {
-      if (e.target.classList.contains('delete-btn')) {
-        const name = e.target.dataset.name;
-        fetch(`/delete/${name}`, { method: 'DELETE' }).then(() => loadFiles());
-      }
-    });
-
-    function handleDrag(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
-    function handleLeave(e) { e.preventDefault(); document.getElementById('dropZone').classList.remove('dragover'); }
-    function handleDrop(e) {
-      e.preventDefault();
-      document.getElementById('dropZone').classList.remove('dragover');
-      [...e.dataTransfer.files].forEach(uploadFile);
-    }
-
-    document.getElementById('fileInput').addEventListener('change', e => {
-      [...e.target.files].forEach(uploadFile);
-    });
-
+function uploadFile(file){
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST","/upload");
+  xhr.upload.onprogress = e => { if(e.lengthComputable) showProgress(file.name, (e.loaded/e.total)*100); };
+  xhr.onload = () => {
+    showProgress(file.name,100);
+    // remember assignment to current folder
+    const dest = currentFolderPath();
+    if(dest!=="All Files") fileFolder[file.name]=dest;
+    saveState();
     loadFiles();
-  </script>
+  };
+  const form = new FormData();
+  form.append("file", file);
+  xhr.send(form);
+}
+
+/* ---------- init ---------- */
+loadFiles();
+</script>
 </body>
 </html>
