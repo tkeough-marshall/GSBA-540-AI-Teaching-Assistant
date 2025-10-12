@@ -5,13 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Manage Course Files</title>
 <style>
-:root {
-  --cardinal:#990000; --gold:#ffd700;
-  --ink:#222; --muted:#777;
-  --bg:#f8f8f8; --panel:#fff; --line:#e7e7e7;
-}
+:root{--cardinal:#990000;--gold:#ffd700;--ink:#222;--muted:#777;--bg:#f8f8f8;--panel:#fff;--line:#e7e7e7}
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
 header{background:var(--cardinal);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
 header a{color:var(--gold);text-decoration:none}
 .frame{max-width:1100px;margin:28px auto;background:var(--panel);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:22px;min-height:720px;display:flex;flex-direction:column;position:relative}
@@ -40,11 +36,13 @@ tbody tr:hover{background:#fff6f6}
 .icon.folder:before{content:"";position:absolute;top:-5px;left:2px;width:8px;height:5px;background:var(--cardinal);border-radius:2px 2px 0 0}
 .row-actions{display:flex;gap:8px;justify-content:flex-end}
 
-/* clean floating modal (no grey background) */
-.modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;width:340px;padding:18px 20px;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:30}
+/* lightweight in-frame modal, no backdrop */
+.modal{position:absolute;top:64px;right:24px;background:#fff;border-radius:12px;width:360px;max-width:calc(100% - 48px);padding:18px 20px;box-shadow:0 16px 32px rgba(0,0,0,.2);z-index:30}
 .modal h3{margin-top:0;font-size:1rem;color:var(--cardinal)}
-.modal input, .modal select{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin:10px 0}
+.modal input,.modal select{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin:10px 0}
 .modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+.badge{display:inline-block;background:#f1f1f1;border:1px solid #e4e4e4;border-radius:6px;padding:3px 8px;font-size:.78rem;color:#333}
+.hidden{display:none}
 </style>
 </head>
 <body>
@@ -66,9 +64,9 @@ tbody tr:hover{background:#fff6f6}
 
   <div class="bar">
     <input id="search" type="text" placeholder="Search files..." oninput="render()"/>
-    <button class="btn secondary" onclick="openNewFolderModal()">New Folder</button>
-    <button id="moveBtn" class="btn secondary" onclick="openMoveModal()" disabled>Move</button>
-    <button id="deleteBtn" class="btn danger" onclick="openDeleteModal()" disabled>Delete Selected</button>
+    <button class="btn secondary" id="newFolderBtn">New Folder</button>
+    <button id="moveBtn" class="btn secondary" disabled>Move</button>
+    <button id="deleteBtn" class="btn danger" disabled>Delete Selected</button>
   </div>
 
   <div class="crumb" id="crumb"></div>
@@ -91,169 +89,261 @@ tbody tr:hover{background:#fff6f6}
     </thead>
     <tbody id="tbody"></tbody>
   </table>
+
+  <!-- Modal container -->
+  <div id="modal" class="modal hidden"></div>
 </div>
 
 <script>
-let files = [];
-let folders = ["All Files"];
-let fileFolder = {};
-let currentPath = [];
+/* ---------- state ---------- */
+let files = [];                // from backend
+let folders = ["All Files"];   // folder paths: "All Files/Folder/Sub"
+let fileFolder = {};           // filename -> folder path
+let currentPath = [];          // ["Folder","Sub"]
+const selected = new Set();    // filenames selected
 
-function pathToString(p){return p.length?p.join("/"):"All Files";}
+/* ---------- utils ---------- */
+const $ = sel => document.querySelector(sel);
+function pathToString(p){ return p.length ? p.join("/") : "All Files"; }
+function here(){ return pathToString(currentPath); }
+function show(el){ el.classList.remove("hidden"); }
+function hide(el){ el.classList.add("hidden"); }
+function clearModal(){ $('#modal').innerHTML=""; hide($('#modal')); }
 
-function showProgress(name,pct){
-  const bar=document.getElementById("progress");
-  bar.style.display="flex";
-  document.getElementById("ptext").textContent=`Uploading ${name}`;
-  document.getElementById("pfill").style.width=`${pct}%`;
-  document.getElementById("pnum").textContent=`${Math.round(pct)}%`;
-  if(pct>=100)setTimeout(()=>bar.style.display="none",600);
-}
-
+/* ---------- fetch & initial load ---------- */
 async function loadFiles(){
-  const res=await fetch("/api/files");
-  files=await res.json();
+  const res = await fetch("/api/files");
+  files = await res.json();
   render();
 }
+loadFiles();
 
+/* ---------- render ---------- */
 function render(){
-  const tbody=document.getElementById("tbody");
-  tbody.innerHTML="";
-  const here=pathToString(currentPath);
-  const q=(document.getElementById("search").value||"").toLowerCase();
-  const selected=document.querySelectorAll(".rowcheck:checked");
-  document.getElementById("deleteBtn").disabled=selected.length===0;
-  document.getElementById("moveBtn").disabled=selected.length===0;
+  // toolbar buttons
+  $('#deleteBtn').disabled = selected.size===0;
+  $('#moveBtn').disabled   = selected.size===0;
 
-  const crumb=document.getElementById("crumb");
-  crumb.innerHTML="";
-  const root=document.createElement("a");
-  root.textContent="All Files";
-  root.onclick=()=>{currentPath=[];render();};
+  // breadcrumb
+  const crumb = $('#crumb'); crumb.innerHTML="";
+  const root = document.createElement("a");
+  root.textContent = "All Files";
+  root.onclick = ()=>{ currentPath=[]; render(); };
   crumb.appendChild(root);
-
   currentPath.forEach((seg,i)=>{
-    const sep=document.createElement("span");
-    sep.className="sep";sep.textContent="›";
-    crumb.appendChild(sep);
-    const a=document.createElement("a");
-    a.textContent=seg;
-    a.onclick=()=>{currentPath=currentPath.slice(0,i+1);render();};
+    const s=document.createElement("span"); s.className="sep"; s.textContent="›"; crumb.appendChild(s);
+    const a=document.createElement("a"); a.textContent=seg; a.onclick=()=>{ currentPath=currentPath.slice(0,i+1); render(); };
     crumb.appendChild(a);
   });
 
-  const fileRows=files.filter(f=>{
-    const assigned=fileFolder[f.file_name]||"All Files";
-    return assigned===here && f.file_name.toLowerCase().includes(q);
-  });
+  // derive child folders for current location
+  const base = here();
+  const childFolders = folders
+    .filter(f => f.startsWith(base==="All Files" ? "" : base + "/"))
+    .map(f => f.replace(base==="All Files" ? "" : base + "/", ""))
+    .filter(x => x && !x.includes("/"))
+    .sort();
 
-  if(fileRows.length===0){
+  // build file rows for this folder
+  const q = ($('#search').value||"").toLowerCase();
+  const rows = files.filter(f=>{
+    const loc = fileFolder[f.file_name] || "All Files";
+    return loc===base && f.file_name.toLowerCase().includes(q);
+  }).sort((a,b)=>a.file_name.localeCompare(b.file_name));
+
+  const tbody = $('#tbody');
+  tbody.innerHTML = "";
+
+  // folder rows
+  for(const name of childFolders){
+    const tr=document.createElement("tr");
+    tr.innerHTML = `
+      <td></td>
+      <td><span class="icon folder"></span><a href="#" data-open="${name}">${name}</a> <span class="badge">Folder</span></td>
+      <td class="muted">Folder</td>
+      <td class="muted">—</td>
+      <td></td>`;
+    tbody.appendChild(tr);
+  }
+
+  // file rows
+  if(rows.length===0 && childFolders.length===0){
     const tr=document.createElement("tr");
     tr.innerHTML=`<td></td><td class="muted" colspan="4">No files found.</td>`;
     tbody.appendChild(tr);
   } else {
-    for(const f of fileRows){
+    for(const f of rows){
+      const checked = selected.has(f.file_name) ? "checked" : "";
       const tr=document.createElement("tr");
-      tr.innerHTML=`
-        <td><input type="checkbox" class="rowcheck" data-name="${f.file_name}"/></td>
+      tr.innerHTML = `
+        <td><input type="checkbox" class="rowcheck" data-name="${f.file_name}" ${checked}/></td>
         <td>${f.file_name}</td>
-        <td>${f.file_type||"—"}</td>
-        <td>${f.uploaded_at?new Date(f.uploaded_at).toLocaleString():"—"}</td>
+        <td>${f.file_type || "—"}</td>
+        <td>${f.uploaded_at ? new Date(f.uploaded_at).toLocaleString() : "—"}</td>
         <td class="row-actions">
-          <button class="btn secondary" onclick="openMoveModal('${f.file_name}')">Move</button>
-          <button class="btn danger" onclick="openDeleteModal('${f.file_name}')">Delete</button>
+          <button class="btn secondary" data-move="${f.file_name}">Move</button>
+          <button class="btn danger" data-delete="${f.file_name}">Delete</button>
         </td>`;
       tbody.appendChild(tr);
     }
   }
-  document.getElementById("selectAll").checked=false;
+
+  // update header checkbox
+  const allChecks = tbody.querySelectorAll('.rowcheck');
+  const allOn = [...allChecks].length && [...allChecks].every(c=>c.checked);
+  $('#selectAll').checked = allOn;
 }
 
-document.addEventListener("change",e=>{
-  if(e.target.classList.contains("rowcheck"))render();
+/* ---------- delegated table events ---------- */
+$('#tbody').addEventListener('click', (e)=>{
+  // open folder
+  const open = e.target.getAttribute('data-open');
+  if(open){ currentPath=[...currentPath, open]; render(); return; }
+
+  // move single
+  const move = e.target.getAttribute('data-move');
+  if(move){ openMoveModal([move]); return; }
+
+  // delete single
+  const del = e.target.getAttribute('data-delete');
+  if(del){ openDeleteModal([del]); return; }
 });
-document.getElementById("selectAll").addEventListener("change",e=>{
-  document.querySelectorAll(".rowcheck").forEach(c=>c.checked=e.target.checked);
+
+$('#tbody').addEventListener('change', (e)=>{
+  if(e.target.classList.contains('rowcheck')){
+    const name = e.target.dataset.name;
+    if(e.target.checked) selected.add(name); else selected.delete(name);
+    render();
+  }
+});
+
+$('#selectAll').addEventListener('change', (e)=>{
+  const checks = $('#tbody').querySelectorAll('.rowcheck');
+  checks.forEach(c=>{
+    c.checked = e.target.checked;
+    const name = c.dataset.name;
+    if(e.target.checked) selected.add(name); else selected.delete(name);
+  });
   render();
 });
 
-function onDrag(e){e.preventDefault();document.getElementById("drop").classList.add("drag");}
-function onLeave(e){e.preventDefault();document.getElementById("drop").classList.remove("drag");}
-function onDrop(e){
-  e.preventDefault();onLeave(e);
-  [...e.dataTransfer.files].forEach(f=>uploadFile(f));
-}
-document.getElementById("fileInput").addEventListener("change",e=>{
-  [...e.target.files].forEach(f=>uploadFile(f));
-  e.target.value="";
+/* ---------- toolbar buttons ---------- */
+$('#newFolderBtn').addEventListener('click', ()=> openNewFolderModal());
+$('#moveBtn').addEventListener('click', ()=>{
+  if(selected.size===0) return;
+  openMoveModal([...selected]);
+});
+$('#deleteBtn').addEventListener('click', ()=>{
+  if(selected.size===0) return;
+  openDeleteModal([...selected]);
 });
 
+/* ---------- upload ---------- */
+function onDrag(e){ e.preventDefault(); $('#drop').classList.add('drag'); }
+function onLeave(e){ e.preventDefault(); $('#drop').classList.remove('drag'); }
+function onDrop(e){ e.preventDefault(); onLeave(e); [...e.dataTransfer.files].forEach(f=>uploadFile(f)); }
+$('#fileInput').addEventListener('change', e=>{
+  [...e.target.files].forEach(f=>uploadFile(f)); e.target.value="";
+});
+
+function showProgress(name,pct){
+  const bar=$('#progress');
+  bar.style.display="flex";
+  $('#ptext').textContent=`Uploading ${name}`;
+  $('#pfill').style.width=`${pct}%`;
+  $('#pnum').textContent=`${Math.round(pct)}%`;
+  if(pct>=100) setTimeout(()=>{ bar.style.display="none"; $('#pfill').style.width="0%"; }, 500);
+}
+
 function uploadFile(file){
-  const xhr=new XMLHttpRequest();
+  const xhr = new XMLHttpRequest();
   xhr.open("POST","/upload");
-  xhr.upload.onprogress=e=>{
-    if(e.lengthComputable)showProgress(file.name,(e.loaded/e.total)*100);
-  };
-  xhr.onload=()=>{
+  xhr.upload.onprogress = e => { if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100); };
+  xhr.onload = () => {
     if(xhr.status===200){
-      const uploaded=JSON.parse(xhr.responseText);
-      files.push(uploaded); // immediate visual insert
-      const dest=pathToString(currentPath);
-      if(dest!=="All Files")fileFolder[uploaded.file_name]=dest;
+      // accept server metadata if provided, else synthesize minimal
+      let uploaded;
+      try{ uploaded = JSON.parse(xhr.responseText); }
+      catch{ uploaded = { file_name:file.name, file_type:'.'+(file.name.split('.').pop()||''), uploaded_at:Date.now() }; }
+      files.push(uploaded);                     // immediate add
+      const dest = here();                      // respect current folder
+      if(dest !== "All Files") fileFolder[uploaded.file_name] = dest;
       render();
     }
   };
-  const form=new FormData();
-  form.append("file",file);
+  const form = new FormData();
+  form.append("file", file);
   xhr.send(form);
 }
 
-/* simple floating modal (no overlay) */
-function showModal(title,contentHTML,onConfirm){
-  const modal=document.createElement("div");
-  modal.className="modal";
-  modal.innerHTML=`
-    <h3>${title}</h3>
-    <div>${contentHTML}</div>
-    <div class="actions">
-      <button class="btn secondary">Cancel</button>
-      <button class="btn">OK</button>
-    </div>`;
-  document.querySelector(".frame").appendChild(modal);
-  modal.querySelector(".btn.secondary").onclick=()=>modal.remove();
-  modal.querySelector(".btn").onclick=()=>{onConfirm(modal);modal.remove();};
-}
-
+/* ---------- modals (in-frame, no backdrop) ---------- */
 function openNewFolderModal(){
-  showModal("New Folder","<input id='folderName' placeholder='Folder name'/>",m=>{
-    const val=m.querySelector("#folderName").value.trim();
-    if(!val)return;
-    const full=pathToString(currentPath)==="All Files"?val:`${pathToString(currentPath)}/${val}`;
-    if(!folders.includes(full))folders.push(full);
+  const box = $('#modal');
+  box.innerHTML = `
+    <h3>New Folder</h3>
+    <input id="folderName" placeholder="Folder name"/>
+    <div class="actions">
+      <button class="btn secondary" id="mCancel">Cancel</button>
+      <button class="btn" id="mOk">OK</button>
+    </div>`;
+  show(box);
+  box.querySelector('#folderName').focus();
+  box.querySelector('#mCancel').onclick = clearModal;
+  box.querySelector('#mOk').onclick = ()=>{
+    const name = box.querySelector('#folderName').value.trim();
+    if(!name){ clearModal(); return; }
+    const full = (here()==="All Files") ? name : `${here()}/${name}`;
+    if(!folders.includes(full)) folders.push(full);
+    clearModal();
     render();
-  });
-}
-function openMoveModal(singleName=null){
-  const selected=singleName?[singleName]:[...document.querySelectorAll(".rowcheck:checked")].map(e=>e.dataset.name);
-  if(selected.length===0)return;
-  const opts=folders.map(f=>`<option>${f}</option>`).join("");
-  showModal("Move Files",`<select id='destSelect'>${opts}</select>`,m=>{
-    const dest=m.querySelector("#destSelect").value;
-    selected.forEach(n=>fileFolder[n]=dest);
-    render();
-  });
-}
-function openDeleteModal(singleName=null){
-  const selected=singleName?[singleName]:[...document.querySelectorAll(".rowcheck:checked")].map(e=>e.dataset.name);
-  if(selected.length===0)return;
-  showModal("Delete Files",`<p>Delete ${selected.length} file(s)?</p>`,async()=>{
-    await Promise.all(selected.map(n=>fetch("/delete/"+n,{method:"DELETE"})));
-    files=files.filter(f=>!selected.includes(f.file_name));
-    render();
-  });
+  };
 }
 
-loadFiles();
+function openMoveModal(names){
+  const box = $('#modal');
+  const opts = folders.map(f=>`<option value="${f}">${f}</option>`).join("");
+  box.innerHTML = `
+    <h3>Move ${names.length} file(s)</h3>
+    <label class="muted">Destination</label>
+    <select id="dest">${opts}</select>
+    <div class="actions">
+      <button class="btn secondary" id="mCancel">Cancel</button>
+      <button class="btn" id="mOk">OK</button>
+    </div>`;
+  show(box);
+  box.querySelector('#mCancel').onclick = clearModal;
+  box.querySelector('#mOk').onclick = ()=>{
+    const dest = box.querySelector('#dest').value;
+    names.forEach(n=> fileFolder[n]=dest);
+    clearModal();
+    render();
+  };
+}
+
+function openDeleteModal(names){
+  const box = $('#modal');
+  box.innerHTML = `
+    <h3>Delete Files</h3>
+    <p>Delete ${names.length} file(s)?</p>
+    <div class="actions">
+      <button class="btn secondary" id="mCancel">Cancel</button>
+      <button class="btn danger" id="mOk">OK</button>
+    </div>`;
+  show(box);
+  box.querySelector('#mCancel').onclick = clearModal;
+  box.querySelector('#mOk').onclick = async ()=>{
+    await Promise.all(names.map(n=> fetch(`/delete/${encodeURIComponent(n)}`, {method:"DELETE"})));
+    files = files.filter(f=> !names.includes(f.file_name));
+    names.forEach(n=> selected.delete(n));
+    clearModal();
+    render();
+  };
+}
+
+/* ---------- keyboard niceties ---------- */
+document.addEventListener('keydown',(e)=>{
+  if(e.key==="Escape") clearModal();
+});
 </script>
 </body>
 </html>
