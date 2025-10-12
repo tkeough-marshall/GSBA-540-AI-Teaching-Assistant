@@ -7,11 +7,12 @@
 <link rel="icon" href="/static/favicon.ico">
 
 <style>
-:root{--cardinal:#990000;--gold:#ffd700;--ink:#222;--muted:#777;--bg:#f8f8f8;--panel:#fff;--line:#e7e7e7}
+:root {
+  --cardinal:#990000; --gold:#ffd700; --ink:#222;
+  --muted:#777; --bg:#f8f8f8; --panel:#fff; --line:#e7e7e7;
+}
 *{box-sizing:border-box}
 body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
-header{background:var(--cardinal);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
-header a{color:var(--gold);text-decoration:none}
 .frame{max-width:1100px;margin:28px auto;background:var(--panel);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:22px;min-height:720px;display:flex;flex-direction:column;position:relative}
 h2{margin:0 0 8px;color:var(--cardinal)}
 .rule{height:2px;background:var(--gold);width:100%;margin:6px 0 18px;border-radius:2px}
@@ -32,72 +33,17 @@ th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:.92rem}
 tbody tr:hover{background:#fff6f6}
 .muted{color:var(--muted)}
 .row-actions{display:flex;gap:8px;justify-content:flex-end}
-
-/* notifications */
 .notice {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--cardinal);
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.2);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-  font-size: 0.9rem;
-  z-index: 1000;
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--cardinal); color: #fff; padding: 10px 18px;
+  border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  font-size: 0.9rem; z-index: 1000;
 }
 .notice.show { opacity: 1; }
-
-/* login overlay */
-#authOverlay {
-  position: fixed;
-  top: 80px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 1500;
-}
-#authBox {
-  text-align: center;
-  padding: 30px 40px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background: var(--panel);
-  box-shadow: 0 2px 8px rgba(0,0,0,.1);
-}
-#authBox h2 { color: var(--cardinal); margin-bottom: 14px; }
-#authBox input {
-  padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  width: 220px;
-  text-align: center;
-  font-size: 1rem;
-  margin-bottom: 10px;
-}
-#authBox button {
-  margin-top: 6px;
-  padding: 8px 14px;
-  background: var(--cardinal);
-  color: #fff;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-}
-#authError {
-  margin-top: 10px;
-  color: #b11226;
-  font-size: 0.9rem;
-  display: none;
+#accessDenied {
+  margin: 80px auto; text-align: center; color: #990000;
+  font-size: 1.2rem; display: none;
 }
 </style>
 </head>
@@ -106,17 +52,9 @@ tbody tr:hover{background:#fff6f6}
 
 {% include '_header.html' %}
 
-<div id="authOverlay">
-  <div id="authBox">
-    <h2>Admin Login</h2>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button id="loginBtn">Sign In</button>
-    <div id="authError">Login failed. Check credentials.</div>
-  </div>
-</div>
+<div id="accessDenied">Access denied. Admin privileges required.</div>
 
-<div class="frame">
+<div class="frame" id="manageFrame" style="display:none;">
   <h2>Manage Uploaded Materials</h2>
   <div class="rule"></div>
 
@@ -157,34 +95,37 @@ tbody tr:hover{background:#fff6f6}
 
 <div class="notice" id="notice"></div>
 
-<!-- Supabase Auth + File Logic -->
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
 const SUPABASE_URL = "{{ SUPABASE_URL }}";
 const SUPABASE_KEY = "{{ SUPABASE_ANON_KEY }}";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = s => document.querySelector(s);
 
-/* --- Auth --- */
-if (sessionStorage.getItem("jwt")) {
-  document.getElementById("authOverlay").style.display = "none";
-}
+/* ---- Admin Check ---- */
+async function checkAdminAccess() {
+  const { data } = await supabase.auth.getUser();
+  const user = data?.user;
 
-async function signIn() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    document.getElementById("authError").style.display = "block";
+  if (!user) {
+    window.location.href = "/login";
     return;
   }
-  const token = (await supabase.auth.getSession()).data.session.access_token;
-  sessionStorage.setItem("jwt", token);
-  document.getElementById("authOverlay").style.display = "none";
-}
-document.getElementById("loginBtn").addEventListener("click", signIn);
 
-/* --- Notifications --- */
+  const role = user.user_metadata?.role || user.app_metadata?.role;
+  if (role !== "admin") {
+    document.getElementById("accessDenied").style.display = "block";
+    return;
+  }
+
+  document.getElementById("manageFrame").style.display = "flex";
+  loadFiles();
+}
+
+checkAdminAccess();
+
+/* ---- Notifications ---- */
 function showNotice(msg) {
   const n = $('#notice');
   n.textContent = msg;
@@ -192,7 +133,7 @@ function showNotice(msg) {
   setTimeout(()=> n.classList.remove('show'), 2000);
 }
 
-/* --- Progress --- */
+/* ---- Progress ---- */
 function showProgress(name,pct){
   const bar=$('#progress');
   bar.style.display="flex";
@@ -202,7 +143,7 @@ function showProgress(name,pct){
   if(pct>=100) setTimeout(()=>{ bar.style.display="none"; $('#pfill').style.width="0%"; },600);
 }
 
-/* --- Files --- */
+/* ---- Files ---- */
 let files = [];
 const selected = new Set();
 
@@ -240,9 +181,8 @@ function renderFiles(){
   const allChecks = tbody.querySelectorAll('.rowcheck');
   $('#selectAll').checked = allChecks.length && [...allChecks].every(c=>c.checked);
 }
-window.addEventListener("DOMContentLoaded", loadFiles);
 
-/* --- Selection --- */
+/* ---- Selection ---- */
 $('#tbody').addEventListener('change', e=>{
   if(e.target.classList.contains('rowcheck')){
     const name=e.target.dataset.name;
@@ -259,9 +199,10 @@ $('#selectAll').addEventListener('change', e=>{
   renderFiles();
 });
 
-/* --- Delete --- */
+/* ---- Delete ---- */
 window.deleteFile = async function(name){
-  const jwt = sessionStorage.getItem("jwt");
+  const { data } = await supabase.auth.getSession();
+  const jwt = data.session.access_token;
   await fetch(`/delete/${encodeURIComponent(name)}`, {
     method:"DELETE",
     headers:{ Authorization: "Bearer " + jwt }
@@ -272,7 +213,8 @@ window.deleteFile = async function(name){
 }
 
 $('#deleteBtn').addEventListener('click', async ()=>{
-  const jwt = sessionStorage.getItem("jwt");
+  const { data } = await supabase.auth.getSession();
+  const jwt = data.session.access_token;
   if(selected.size===0) return;
   for(const name of selected){
     await fetch(`/delete/${encodeURIComponent(name)}`,{
@@ -286,7 +228,7 @@ $('#deleteBtn').addEventListener('click', async ()=>{
   renderFiles();
 });
 
-/* --- Upload --- */
+/* ---- Upload ---- */
 function onDrag(e){ e.preventDefault(); $('#drop').classList.add('drag'); }
 function onLeave(e){ e.preventDefault(); $('#drop').classList.remove('drag'); }
 function onDrop(e){
@@ -303,7 +245,8 @@ async function uploadFilesSequentially(list){
   for(const file of list){ await uploadFile(file); }
 }
 async function uploadFile(file){
-  const jwt = sessionStorage.getItem("jwt");
+  const { data } = await supabase.auth.getSession();
+  const jwt = data.session.access_token;
   return new Promise(resolve=>{
     const xhr = new XMLHttpRequest();
     xhr.open("POST","/upload");

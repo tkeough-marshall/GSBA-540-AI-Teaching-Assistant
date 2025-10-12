@@ -22,6 +22,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")  # add this in .env
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 EMBED_MODEL = "text-embedding-3-large"
 CHAT_MODEL  = "gpt-4o-mini"
@@ -274,6 +275,13 @@ def chat():
         return jsonify({"response": f"{ans}\n\n{src_txt}"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.context_processor
+def inject_env():
+    return dict(
+        SUPABASE_URL=SUPABASE_URL,
+        SUPABASE_ANON_KEY=SUPABASE_ANON_KEY
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
