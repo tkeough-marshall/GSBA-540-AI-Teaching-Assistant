@@ -51,21 +51,63 @@ tbody tr:hover{background:#fff6f6}
   z-index: 1000;
 }
 .notice.show { opacity: 1; }
+
+/* password overlay */
+#authOverlay {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+#authBox {
+  text-align: center;
+  padding: 30px 40px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+#authBox h2 { color: var(--cardinal); margin-bottom: 14px; }
+#authBox input {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  width: 200px;
+  text-align: center;
+  font-size: 1rem;
+}
+#authBox button {
+  margin-top: 12px;
+  padding: 8px 14px;
+  background: var(--cardinal);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+#authError {
+  margin-top: 10px;
+  color: #b11226;
+  font-size: 0.9rem;
+  display: none;
+}
 </style>
 </head>
 
 <body>
-<script>
-const PASS = "marshall565"; // change as needed
-if (!sessionStorage.getItem("authOK")) {
-  const userInput = prompt("Enter access password:");
-  if (userInput !== PASS) {
-    window.location.href = "/";
-  } else {
-    sessionStorage.setItem("authOK", "true");
-  }
-}
-</script>
+<div id="authOverlay">
+  <div id="authBox">
+    <h2>Restricted Access</h2>
+    <p style="margin-bottom:8px;color:#444;">Enter password to continue</p>
+    <input type="password" id="authInput" placeholder="Password" />
+    <button onclick="checkAuth()">Enter</button>
+    <div id="authError">Incorrect password. Try again.</div>
+  </div>
+</div>
 
 {% include '_header.html' %}
 
@@ -108,10 +150,24 @@ if (!sessionStorage.getItem("authOK")) {
 <div class="notice" id="notice"></div>
 
 <script>
-let files = [];
-const selected = new Set();
+const PASS = "marshall565"; // change as needed
 const $ = s => document.querySelector(s);
 
+if (sessionStorage.getItem("authOK")) {
+  $('#authOverlay').style.display = "none";
+}
+
+function checkAuth() {
+  const input = $('#authInput').value.trim();
+  if (input === PASS) {
+    sessionStorage.setItem("authOK", "true");
+    $('#authOverlay').style.display = "none";
+  } else {
+    $('#authError').style.display = "block";
+  }
+}
+
+/* ---- notifications ---- */
 function showNotice(msg) {
   const n = $('#notice');
   n.textContent = msg;
@@ -130,6 +186,9 @@ function showProgress(name,pct){
 }
 
 /* ---- load + render ---- */
+let files = [];
+const selected = new Set();
+
 async function loadFiles(){
   const res = await fetch("/api/files");
   files = await res.json();
@@ -237,7 +296,6 @@ function uploadFile(file){
     };
     xhr.onload = async ()=>{
       if(xhr.status===200){
-        // Wait briefly to let backend finish writing, then reload list
         setTimeout(async ()=>{
           const res = await fetch("/api/files");
           files = await res.json();
