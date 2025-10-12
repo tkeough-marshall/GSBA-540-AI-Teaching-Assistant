@@ -58,7 +58,6 @@ def extract_pdf_text(path: str) -> str:
 
 def extract_docx_text(path: str) -> str:
     out = []
-    # ---- primary parse ----
     try:
         doc = DocxDocument(path)
         for para in doc.paragraphs:
@@ -74,7 +73,7 @@ def extract_docx_text(path: str) -> str:
         log(f"❌ python-docx failed: {e}")
         traceback.print_exc()
 
-    # ---- deep fallback (scan all XMLs) ----
+    # ---- deep fallback ----
     try:
         with ZipFile(path, "r") as z:
             xml_files = [f for f in z.namelist() if f.startswith("word/") and f.endswith(".xml")]
@@ -202,28 +201,32 @@ def upload_file():
     file = request.files.get("file")
     if not file:
         return jsonify({"error": "No file provided"}), 400
+
     name = secure_filename(file.filename)
-    tmp = tempfile.NamedTemporaryFile(delete=False)
-    file.save(tmp.name)
-    size = os.path.getsize(tmp.name)
-    with open(tmp.name, "rb") as f:
-        sig = f.read(2)
+    data = file.read()  # read file once safely
+    size = len(data)
+    sig = data[:2]
     log(f"✅ Upload received: {name} | {size} bytes | sig={sig}")
 
+    # write cleanly to disk
+    tmp_path = os.path.join(tempfile.gettempdir(), name)
+    with open(tmp_path, "wb") as f:
+        f.write(data)
+
     try:
-        with open(tmp.name, "rb") as fh:
-            supabase.storage.from_("materials").upload(name, fh)
+        supabase.storage.from_("materials").upload(name, data)
         supabase.table("files").insert({
             "file_name": name,
             "file_type": os.path.splitext(name)[1].lower(),
             "source_path": name
         }).execute()
+        log(f"📦 Logged file: {name}")
     except Exception as e:
         log(f"❌ upload/log error: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-    result = process_and_store(tmp.name, name)
+    result = process_and_store(tmp_path, name)
     log(f"🧠 Embedding result: {result}")
     return jsonify({"message": f"{name} uploaded", "embedding_result": result})
 
