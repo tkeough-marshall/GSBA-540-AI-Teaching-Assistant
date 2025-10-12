@@ -95,22 +95,40 @@ def embed_text(text):
 
 
 def process_and_store(file_path, file_name):
-    text = extract_text(file_path)
+    print(f"🔍 Starting embedding for: {file_name}")
+    try:
+        text = extract_text(file_path)
+        print(f"📄 Extracted {len(text)} characters of text")
+    except Exception as e:
+        print(f"❌ Error extracting text from {file_name}: {e}")
+        return {"status": "extract_failed"}
+
     if not text.strip():
         print(f"⚠️ No extractable text in {file_name}")
         return {"status": "no_text"}
 
     chunks = list(chunk_text(text))
+    print(f"🧩 Split into {len(chunks)} chunks")
+
     total = 0
     for i, chunk in enumerate(chunks):
         try:
             emb = embed_text(chunk)
-            meta = {"source_file": file_name, "chunk_index": i, "file_type": os.path.splitext(file_name)[1]}
-            supabase.table("documents").insert({"content": chunk, "embedding": emb, "metadata": meta}).execute()
+            meta = {
+                "source_file": file_name,
+                "chunk_index": i,
+                "file_type": os.path.splitext(file_name)[1]
+            }
+            supabase.table("documents").insert({
+                "content": chunk,
+                "embedding": emb,
+                "metadata": meta
+            }).execute()
             total += 1
         except Exception as e:
-            print(f"❌ Error embedding chunk {i}: {e}")
+            print(f"❌ Error embedding chunk {i} for {file_name}: {e}")
 
+    print(f"✅ Finished embedding {total} chunks for {file_name}")
     return {"status": "success", "chunks": total}
 
 
@@ -159,21 +177,30 @@ def upload_file():
     tmp = tempfile.NamedTemporaryFile(delete=False)
     file.save(tmp.name)
 
-    # Upload to Supabase Storage bucket
-    supabase.storage.from_("materials").upload(filename, open(tmp.name, "rb"))
+    print(f"✅ Upload request received for {filename}")
 
-    # Log record in 'files' table
-    supabase.table("files").insert({
-        "file_name": filename,
-        "file_type": os.path.splitext(filename)[1],
-        "source_path": path
-    }).execute()
+    try:
+        supabase.storage.from_("materials").upload(filename, open(tmp.name, "rb"))
+        supabase.table("files").insert({
+            "file_name": filename,
+            "file_type": os.path.splitext(filename)[1],
+            "source_path": path
+        }).execute()
+        print(f"📦 File logged successfully: {filename}")
+    except Exception as e:
+        print("❌ Error uploading or logging file:", e)
+        return jsonify({"error": str(e)}), 500
 
-    # Embed + store in documents
-    result = process_and_store(tmp.name, filename)
+    # Embed + store
+    try:
+        result = process_and_store(tmp.name, filename)
+        print(f"🧠 Embedding result: {result}")
+    except Exception as e:
+        print("❌ Error during embedding pipeline:", e)
+        result = {"status": "embed_failed", "error": str(e)}
 
     return jsonify({
-        "message": f"{filename} uploaded and embedded successfully",
+        "message": f"{filename} uploaded and embedding attempted",
         "embedding_result": result
     })
 
@@ -181,10 +208,15 @@ def upload_file():
 @app.route("/delete/<file_name>", methods=["DELETE"])
 def delete_file(file_name):
     """Delete file from Supabase Storage, 'files', and 'documents'"""
-    supabase.storage.from_("materials").remove([file_name])
-    supabase.table("files").delete().eq("file_name", file_name).execute()
-    supabase.table("documents").delete().filter("metadata->>source_file", "eq", file_name).execute()
-    return jsonify({"message": f"{file_name} deleted successfully"})
+    try:
+        supabase.storage.from_("materials").remove([file_name])
+        supabase.table("files").delete().eq("file_name", file_name).execute()
+        supabase.table("documents").delete().filter("metadata->>source_file", "eq", file_name).execute()
+        print(f"🗑️ Deleted {file_name} from storage and database")
+        return jsonify({"message": f"{file_name} deleted successfully"})
+    except Exception as e:
+        print("❌ Error deleting file:", e)
+        return jsonify({"error": str(e)}), 500
 
 
 # ==============================
@@ -238,6 +270,7 @@ def chat():
         return jsonify({"response": f"{answer}\n\n{formatted_sources}"})
 
     except Exception as e:
+        print("❌ Chat error:", e)
         return jsonify({"error": str(e)}), 500
 
 

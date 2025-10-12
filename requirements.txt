@@ -1,20 +1,9 @@
-# Core backend
 flask
 flask-cors
-
-# OpenAI API
 openai
-
-# Supabase client
 supabase
-
-# Environment variable loader
 python-dotenv
-
-# File handling
 werkzeug
-
-# Document parsing
 pymupdf
 python-docx
 python-pptx
