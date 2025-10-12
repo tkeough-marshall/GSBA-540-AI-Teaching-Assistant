@@ -7,44 +7,83 @@
 <link rel="icon" href="/static/favicon.ico">
 <style>
 body {
-  margin: 0; background: #f8f8f8;
+  margin: 0;
+  background: #f8f8f8;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 .main {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
 }
 .box {
-  background: #fff; padding: 36px 40px; border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.1); width: 320px; text-align: center;
+  background: #fff;
+  padding: 36px 40px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.1);
+  width: 320px;
+  text-align: center;
 }
-h2 { color: #990000; margin-bottom: 20px; }
+h2 {
+  color: #990000;
+  margin-bottom: 20px;
+}
 input {
-  width: 100%; padding: 10px 12px; margin: 6px 0;
-  border: 1px solid #ccc; border-radius: 8px; font-size: 1rem;
+  width: 100%;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
 }
 button {
-  margin-top: 12px; width: 100%; padding: 10px; border: 0;
-  border-radius: 8px; background: #990000; color: #fff;
-  font-weight: 600; cursor: pointer; font-size: 1rem;
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #990000;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 1rem;
 }
-button:hover { background: #b11226; }
+button:hover {
+  background: #b11226;
+}
 .status {
-  margin-top: 12px; font-size: 0.9rem; display: none;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  display: none;
 }
-.status.error { color: #b11226; }
-.status.success { color: #00703c; }
+.status.error {
+  color: #b11226;
+}
+.status.success {
+  color: #00703c;
+}
 .spinner {
-  width: 16px; height: 16px; border: 2px solid #fff;
-  border-top: 2px solid transparent; border-radius: 50%;
-  display: inline-block; margin-right: 6px;
-  animation: spin 0.8s linear infinite; vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 </style>
 </head>
 <body>
+
 {% include '_header.html' %}
+
 <div class="main">
   <div class="box">
     <h2>Admin Login</h2>
@@ -86,11 +125,17 @@ btn.addEventListener("click", async () => {
 
   const { data: session } = await supabase.auth.getSession();
   const token = session?.session?.access_token;
+
   if (token) {
-    sessionStorage.setItem("jwt", token);
+    // Write JWT cookie for Flask
+    document.cookie = `jwt=${token}; path=/; max-age=604800; secure; samesite=strict`;
+
     status.textContent = "Login successful. Redirecting...";
     status.classList.add("success");
-    window.location.href = "/manage";
+
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 1000);
   } else {
     status.textContent = "Could not get token. Try again.";
     status.classList.add("error");
@@ -99,5 +144,6 @@ btn.addEventListener("click", async () => {
   }
 });
 </script>
+
 </body>
 </html>

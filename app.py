@@ -1,6 +1,6 @@
 import os, sys, tempfile, traceback, re, jwt
 from zipfile import ZipFile
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for, make_response
 from flask_cors import CORS
 from supabase import create_client
 from dotenv import load_dotenv
@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 import fitz  # PyMuPDF
 from docx import Document as DocxDocument
 from pptx import Presentation
+from functools import wraps
 from openai import OpenAI
 
 # -------- logging --------
@@ -20,7 +21,7 @@ def log(msg: str): print(msg, flush=True)
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")  # add this in .env
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
@@ -49,23 +50,38 @@ def load_system_prompt(filepath="system_message.txt"):
 SYSTEM_PROMPT = load_system_prompt()
 
 # ==============================
-# Utility: verify Supabase JWT
+# JWT helpers
 # ==============================
-def get_user_role_from_jwt():
-    """Extracts 'role' from Supabase JWT."""
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+def decode_jwt_from_cookie():
+    token = request.cookies.get("jwt")
     if not token:
         return None
     try:
         decoded = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"])
-        meta = decoded.get("user_metadata") or decoded.get("app_metadata") or {}
-        return meta.get("role")
+        return decoded
     except Exception as e:
         log(f"⚠️ JWT decode failed: {e}")
         return None
 
+def require_login(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if request.path.startswith("/login") or request.path.startswith("/static"):
+            return f(*args, **kwargs)
+
+        decoded = decode_jwt_from_cookie()
+        if not decoded:
+            return redirect(url_for("login"))
+
+        role = (decoded.get("user_metadata") or decoded.get("app_metadata") or {}).get("role")
+        if request.path.startswith("/manage") and role != "admin":
+            return render_template("unauthorized.html"), 403
+
+        return f(*args, **kwargs)
+    return wrapper
+
 # ==============================
-# Text extraction
+# Text extraction (unchanged)
 # ==============================
 def extract_pdf_text(path: str) -> str:
     doc = fitz.open(path)
@@ -131,7 +147,7 @@ def extract_text(path: str) -> str:
         return ""
 
 # ==============================
-# Chunking + Embedding
+# Chunking + Embedding (unchanged)
 # ==============================
 def chunk_text(text: str, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     words = text.split()
@@ -178,26 +194,33 @@ def process_and_store(path: str, filename: str):
     return {"status": "success", "chunks": total}
 
 # ==============================
-# Routes
+# Routes (protected)
 # ==============================
 @app.route("/")
+@require_login
 def home():
     return render_template("index.html")
 
 @app.route("/about")
+@require_login
 def about():
     return render_template("about.html")
 
 @app.route("/manage")
+@require_login
 def manage():
+    decoded = decode_jwt_from_cookie()
+    role = (decoded.get("user_metadata") or decoded.get("app_metadata") or {}).get("role") if decoded else None
+    if role != "admin":
+        return render_template("unauthorized.html"), 403
     return render_template("manage.html")
 
 @app.route("/login")
 def login():
     return render_template("login.html")
 
-
 @app.route("/api/files")
+@require_login
 def list_files():
     try:
         data = supabase.table("files").select("*").order("uploaded_at", desc=True).execute()
@@ -207,8 +230,10 @@ def list_files():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/upload", methods=["POST"])
+@require_login
 def upload_file():
-    role = get_user_role_from_jwt()
+    decoded = decode_jwt_from_cookie()
+    role = (decoded.get("user_metadata") or decoded.get("app_metadata") or {}).get("role") if decoded else None
     if role != "admin":
         return jsonify({"error": "Unauthorized"}), 403
 
@@ -237,8 +262,10 @@ def upload_file():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/delete/<name>", methods=["DELETE"])
+@require_login
 def delete_file(name):
-    role = get_user_role_from_jwt()
+    decoded = decode_jwt_from_cookie()
+    role = (decoded.get("user_metadata") or decoded.get("app_metadata") or {}).get("role") if decoded else None
     if role != "admin":
         return jsonify({"error": "Unauthorized"}), 403
     try:
@@ -250,6 +277,7 @@ def delete_file(name):
         return jsonify({"error": str(e)}), 500
 
 @app.route("/chat", methods=["POST"])
+@require_login
 def chat():
     user_input = request.json.get("message", "").strip()
     if not user_input:
@@ -280,7 +308,7 @@ def chat():
         return jsonify({"response": f"{ans}\n\n{src_txt}"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
 @app.context_processor
 def inject_env():
     return dict(
