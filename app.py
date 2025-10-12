@@ -1,6 +1,6 @@
 import os, sys, tempfile, traceback, re
 from zipfile import ZipFile
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from supabase import create_client
 from dotenv import load_dotenv
@@ -31,7 +31,7 @@ CHUNK_OVERLAP = 100
 BUCKET = "materials"
 
 # -------- clients --------
-app = Flask(__name__, static_folder="static", static_url_path="/static")
+app = Flask(__name__, static_folder="static", static_url_path="/static", template_folder="templates")
 CORS(app)
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 oai = OpenAI(api_key=OPENAI_API_KEY)
@@ -164,16 +164,19 @@ def process_and_store(path: str, filename: str):
 # Routes
 # ==============================
 @app.route("/")
-def index():
-    return send_from_directory(".", "index.html")
+def home():
+    return render_template("index.html")
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
 
 @app.route("/manage")
 def manage():
-    return send_from_directory("templates", "manage.html")
+    return render_template("manage.html")
 
 @app.route("/api/files")
 def list_files():
-    """List files from the files table (authoritative)."""
     try:
         data = supabase.table("files").select("*").order("uploaded_at", desc=True).execute()
         return jsonify(data.data or [])
@@ -184,7 +187,6 @@ def list_files():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    """Upload to Storage, insert files row, then embed."""
     file = request.files.get("file")
     if not file:
         return jsonify({"error": "No file provided"}), 400
@@ -197,7 +199,7 @@ def upload_file():
     with open(tmp_path, "wb") as f:
         f.write(data)
 
-    # 1) Storage upload (flat, upsert)
+    # Storage upload
     try:
         res = supabase.storage.from_(BUCKET).upload(name, data)
         if hasattr(res, "error") and res.error is not None:
@@ -208,20 +210,18 @@ def upload_file():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-    # 2) Insert into files table (links UI <-> Storage)
+    # Insert metadata
     try:
         supabase.table("files").insert({
             "file_name": name,
             "file_type": os.path.splitext(name)[1].lower(),
             "source_path": name
-            # uploaded_at handled by DB default NOW() if present
         }).execute()
         log(f"📝 files row inserted: {name}")
     except Exception as e:
-        # Non-fatal: UI should still see storage, but we keep behavior consistent
         log(f"⚠️ files insert failed: {e}")
 
-    # 3) Embed into documents (non-fatal)
+    # Embed
     try:
         result = process_and_store(tmp_path, name)
         log(f"🧠 Embedding result: {result}")
@@ -238,15 +238,11 @@ def upload_file():
 
 @app.route("/delete/<name>", methods=["DELETE"])
 def delete_file(name):
-    """Delete from Storage, files, and documents."""
     try:
-        # Storage
         res = supabase.storage.from_(BUCKET).remove([name])
         if hasattr(res, "error") and res.error is not None:
             raise Exception(res.error.message)
-        # files table
         supabase.table("files").delete().eq("file_name", name).execute()
-        # embeddings
         supabase.table("documents").delete().filter("metadata->>source_file", "eq", name).execute()
         log(f"🗑️ Deleted {name} from storage, files, documents")
         return jsonify({"message": f"{name} deleted"})
@@ -288,10 +284,6 @@ def chat():
         log(f"❌ chat error: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    
-@app.route("/about")
-def about():
-    return send_from_directory("templates", "about.html")
 
 
 # -------- run --------
