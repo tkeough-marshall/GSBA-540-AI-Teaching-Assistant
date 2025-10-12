@@ -1,69 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Manage Course Files</title>
   <style>
-    :root{
-      --cardinal:#990000; --gold:#ffd700; --ink:#222; --muted:#777;
+    :root {
+      --cardinal:#990000; --gold:#ffd700;
+      --ink:#222; --muted:#777;
       --bg:#f8f8f8; --panel:#fff; --line:#e7e7e7;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);}
-    header{background:var(--cardinal);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
-    header a{color:var(--gold);text-decoration:none}
-    /* Fixed main frame */
-    .frame{max-width:1100px;margin:28px auto;background:var(--panel);border-radius:12px;
-           box-shadow:0 2px 12px rgba(0,0,0,.08);padding:22px;min-height:720px;display:flex;flex-direction:column}
-    h2{margin:0 0 8px;color:var(--cardinal)}
-    .rule{height:2px;background:var(--gold);width:100%;margin:6px 0 18px;border-radius:2px}
+    body {
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:var(--bg);
+      color:var(--ink);
+    }
+    header {
+      background:var(--cardinal);
+      color:#fff;
+      padding:16px 24px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    header a { color:var(--gold); text-decoration:none; }
 
-    /* Dropzone */
-    .drop{border:2px dashed #cfcfcf;border-radius:10px;padding:22px;text-align:center;background:#fafafa;margin-bottom:12px}
-    .drop.drag{border-color:var(--cardinal);background:#fff6f6}
-    .btn{background:var(--cardinal);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:.92rem;cursor:pointer}
-    .btn:disabled{opacity:.4;cursor:not-allowed}
-    .btn.secondary{background:#f3f3f3;color:#333}
-    .btn.danger{background:#b11226}
+    .frame {
+      max-width:1100px;
+      margin:28px auto;
+      background:var(--panel);
+      border-radius:12px;
+      box-shadow:0 2px 12px rgba(0,0,0,.08);
+      padding:22px;
+      min-height:720px;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+    h2 { margin:0 0 8px; color:var(--cardinal); }
+    .rule { height:2px; background:var(--gold); width:100%; margin:6px 0 18px; border-radius:2px; }
 
-    /* Toolbar */
-    .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
-    .bar input[type="text"]{flex:1;border:1px solid #d5d5d5;border-radius:8px;padding:9px 12px}
+    .drop {
+      border:2px dashed #cfcfcf;
+      border-radius:10px;
+      padding:22px;
+      text-align:center;
+      background:#fafafa;
+      margin-bottom:12px;
+    }
+    .drop.drag { border-color:var(--cardinal); background:#fff6f6; }
 
-    /* Breadcrumb */
-    .crumb{font-size:.9rem;color:#444;margin-bottom:8px}
-    .crumb a{color:var(--cardinal);text-decoration:none;cursor:pointer}
-    .crumb span.sep{color:#bbb;margin:0 6px}
+    .btn { background:var(--cardinal); color:#fff; border:0; border-radius:8px; padding:9px 14px; font-size:.92rem; cursor:pointer; }
+    .btn.secondary { background:#f3f3f3; color:#333; }
+    .btn.danger { background:#b11226; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
 
-    /* Progress */
-    .progress{display:none;align-items:center;gap:10px;margin:8px 0}
-    .progress .track{flex:1;height:10px;background:#eee;border-radius:8px;overflow:hidden}
-    .progress .fill{height:100%;width:0;background:var(--cardinal);transition:width .15s linear}
+    .bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0; }
+    .bar input[type="text"] { flex:1; border:1px solid #d5d5d5; border-radius:8px; padding:9px 12px; }
 
-    /* Table */
-    table{width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden}
-    thead{background:#f6f6f6}
-    th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:.92rem}
-    tbody tr:hover{background:#fff6f6}
-    .muted{color:var(--muted)}
-    .icon{width:16px;height:16px;display:inline-block;margin-right:8px;vertical-align:-3px}
-    .icon.folder{border:2px solid var(--cardinal);border-top-left-radius:3px;border-top-right-radius:3px;border-bottom-left-radius:3px;position:relative}
-    .icon.folder:before{content:"";position:absolute;top:-6px;left:2px;width:10px;height:6px;background:var(--cardinal);border-top-left-radius:3px;border-top-right-radius:3px}
-    .row-actions{display:flex;gap:8px;justify-content:flex-end}
+    .crumb { font-size:.9rem; color:#444; margin-bottom:8px; }
+    .crumb a { color:var(--cardinal); text-decoration:none; cursor:pointer; }
+    .crumb span.sep { color:#bbb; margin:0 6px; }
+
+    .progress { display:none; align-items:center; gap:10px; margin:8px 0; }
+    .progress .track { flex:1; height:10px; background:#eee; border-radius:8px; overflow:hidden; }
+    .progress .fill { height:100%; width:0; background:var(--cardinal); transition:width .15s linear; }
+
+    table { width:100%; border-collapse:collapse; border-radius:10px; overflow:hidden; }
+    thead { background:#f6f6f6; }
+    th, td { padding:11px 12px; border-bottom:1px solid var(--line); font-size:.92rem; }
+    tbody tr:hover { background:#fff6f6; }
+    .muted { color:var(--muted); }
+    .icon.folder { width:14px; height:14px; border:2px solid var(--cardinal); border-radius:3px; margin-right:8px; display:inline-block; position:relative; vertical-align:-3px; }
+    .icon.folder:before { content:""; position:absolute; top:-5px; left:2px; width:8px; height:5px; background:var(--cardinal); border-radius:2px 2px 0 0; }
+    .row-actions { display:flex; gap:8px; justify-content:flex-end; }
+
+    /* Modal styling */
+    .modal { position:absolute; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index:20; }
+    .modal-box { background:#fff; border-radius:12px; width:340px; padding:18px 20px; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+    .modal h3 { margin-top:0; font-size:1rem; color:var(--cardinal); }
+    .modal input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; margin:10px 0; }
+    .modal .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
   </style>
 </head>
 <body>
   <header>
     <span>Course File Manager</span>
-    <a href="/">← Back to Assistant</a>
+    <a href="/">← Back</a>
   </header>
 
   <div class="frame">
     <h2>Manage Uploaded Materials</h2>
     <div class="rule"></div>
 
-    <!-- Dropzone -->
     <div id="drop" class="drop" ondrop="onDrop(event)" ondragover="onDrag(event)" ondragleave="onLeave(event)">
       <div class="muted" style="margin-bottom:6px">Drag and drop files here</div>
       <div class="muted" style="margin-bottom:10px">or</div>
@@ -71,31 +102,25 @@
       <button class="btn" onclick="document.getElementById('fileInput').click()">Select Files</button>
     </div>
 
-    <!-- Toolbar -->
     <div class="bar">
       <input id="search" type="text" placeholder="Search files..." oninput="render()"/>
-      <button class="btn secondary" onclick="createFolder()">New Folder</button>
-      <select id="moveSelect" class="btn secondary" onchange="moveSelected(this)" disabled>
-        <option value="">Move to…</option>
-      </select>
-      <button id="bulkDelete" class="btn danger" onclick="deleteSelected()" disabled>Delete Selected</button>
+      <button class="btn secondary" onclick="openNewFolderModal()">New Folder</button>
+      <button id="moveBtn" class="btn secondary" onclick="openMoveModal()" disabled>Move</button>
+      <button id="deleteBtn" class="btn danger" onclick="openDeleteModal()" disabled>Delete Selected</button>
     </div>
 
-    <!-- Breadcrumb -->
     <div class="crumb" id="crumb"></div>
 
-    <!-- Progress -->
     <div class="progress" id="progress">
       <span id="ptext" class="muted">Uploading…</span>
       <div class="track"><div class="fill" id="pfill"></div></div>
       <span id="pnum" class="muted">0%</span>
     </div>
 
-    <!-- Table -->
     <table>
       <thead>
         <tr>
-          <th style="width:36px"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"/></th>
+          <th style="width:36px"><input type="checkbox" id="selectAll"/></th>
           <th>Name</th>
           <th style="width:120px">Type</th>
           <th style="width:220px">Date Added</th>
@@ -107,22 +132,22 @@
   </div>
 
 <script>
-/* ---------- client state (persisted) ---------- */
-const LS_FOLDERS = "ta_folders";
-const LS_FILEMAP = "ta_filemap"; // { fileName: "Folder/Sub" }
+let files = [];
+let folders = ["All Files"];
+let fileFolder = {};
+let currentPath = [];
 
-let folders = loadJSON(LS_FOLDERS) ?? ["All Files"];
-let fileFolder = loadJSON(LS_FILEMAP) ?? {}; // filename -> folder path
-let currentPath = []; // [] = All Files
-let files = []; // from /api/files
+function pathToString(p){ return p.length ? p.join("/") : "All Files"; }
 
-function saveState(){ saveJSON(LS_FOLDERS, folders); saveJSON(LS_FILEMAP, fileFolder); }
-function saveJSON(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch{} }
-function loadJSON(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch{ return null } }
-function pathToString(p){ return p.length? p.join("/") : "All Files"; }
-function allFolderPaths(){ return folders; }
+function showProgress(name,pct){
+  const bar=document.getElementById("progress");
+  bar.style.display="flex";
+  document.getElementById("ptext").textContent=`Uploading ${name}`;
+  document.getElementById("pfill").style.width=`${pct}%`;
+  document.getElementById("pnum").textContent=`${Math.round(pct)}%`;
+  if(pct>=100) setTimeout(()=>bar.style.display="none",600);
+}
 
-/* ---------- fetch & render ---------- */
 async function loadFiles(){
   const res = await fetch("/api/files");
   files = await res.json();
@@ -130,71 +155,36 @@ async function loadFiles(){
 }
 
 function render(){
-  // toolbar state
-  const selected = [...document.querySelectorAll(".rowcheck:checked")];
-  document.getElementById("bulkDelete").disabled = selected.length===0;
-  document.getElementById("moveSelect").disabled = selected.length===0;
+  const tbody=document.getElementById("tbody");
+  tbody.innerHTML="";
+  const here=pathToString(currentPath);
+  const q=(document.getElementById("search").value||"").toLowerCase();
+  const selected=Array.from(document.querySelectorAll(".rowcheck:checked"));
+  document.getElementById("deleteBtn").disabled=selected.length===0;
+  document.getElementById("moveBtn").disabled=selected.length===0;
 
-  // breadcrumb
-  const crumb = document.getElementById("crumb");
-  crumb.innerHTML = "";
-  const root = document.createElement("a");
-  root.textContent = "All Files";
-  root.onclick = ()=>{ currentPath=[]; render(); };
+  const crumb=document.getElementById("crumb");
+  crumb.innerHTML="";
+  const root=document.createElement("a");
+  root.textContent="All Files";
+  root.onclick=()=>{currentPath=[];render();};
   crumb.appendChild(root);
-  let build=[];
   currentPath.forEach((seg,i)=>{
-    crumb.appendChild(spanSep());
-    build.push(seg);
+    const sep=document.createElement("span");
+    sep.className="sep"; sep.textContent="›";
+    crumb.appendChild(sep);
     const a=document.createElement("a");
-    a.textContent=seg;
-    a.onclick=()=>{ currentPath=currentPath.slice(0,i+1); render(); };
+    a.textContent=seg; a.onclick=()=>{currentPath=currentPath.slice(0,i+1);render();};
     crumb.appendChild(a);
   });
 
-  // Move-to options
-  const sel = document.getElementById("moveSelect");
-  sel.innerHTML = `<option value="">Move to…</option>`;
-  for(const f of folders){
-    sel.insertAdjacentHTML("beforeend", `<option value="${f}">${f}</option>`);
-  }
-
-  // build data set for current folder
-  const here = pathToString(currentPath);
-  const q = (document.getElementById("search").value||"").toLowerCase();
-
-  // derive child folders of current path
-  const childFolders = folders
-    .filter(f => f.startsWith(here === "All Files" ? "" : here + "/"))
-    .map(f => f.replace(here === "All Files" ? "" : here + "/", ""))
-    .filter(x => x && !x.includes("/"))
-    .sort();
-
-  // files belonging exactly to current path
-  const fileRows = files.filter(f=>{
-    const assigned = fileFolder[f.file_name] || "All Files";
-    const inHere = (assigned === here);
-    const matches = f.file_name.toLowerCase().includes(q);
-    return inHere && matches;
+  const fileRows=files.filter(f=>{
+    const assigned=fileFolder[f.file_name]||"All Files";
+    const inHere=(assigned===here);
+    return inHere && f.file_name.toLowerCase().includes(q);
   }).sort((a,b)=>a.file_name.localeCompare(b.file_name));
 
-  const tbody = document.getElementById("tbody");
-  tbody.innerHTML = "";
-
-  // add folders as rows
-  for(const name of childFolders){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td></td>
-      <td><span class="icon folder"></span><a href="#" onclick="openFolder('${name}');return false;">${name}</a></td>
-      <td class="muted">Folder</td>
-      <td class="muted">—</td>
-      <td></td>`;
-    tbody.appendChild(tr);
-  }
-
-  // add file rows
-  if(fileRows.length===0 && childFolders.length===0){
+  if(fileRows.length===0){
     const tr=document.createElement("tr");
     tr.innerHTML=`<td></td><td class="muted" colspan="4">No files found.</td>`;
     tbody.appendChild(tr);
@@ -202,121 +192,116 @@ function render(){
     for(const f of fileRows){
       const tr=document.createElement("tr");
       tr.innerHTML=`
-        <td><input type="checkbox" class="rowcheck" data-name="${f.file_name}" onchange="render()"/></td>
+        <td><input type="checkbox" class="rowcheck" data-name="${f.file_name}"/></td>
         <td>${f.file_name}</td>
-        <td>${f.file_type || "—"}</td>
+        <td>${f.file_type||"—"}</td>
         <td>${f.uploaded_at ? new Date(f.uploaded_at).toLocaleString() : "—"}</td>
         <td class="row-actions">
-          <button class="btn secondary" onclick="moveOne('${f.file_name}')">Move</button>
-          <button class="btn danger" onclick="deleteOne('${f.file_name}')">Delete</button>
+          <button class="btn secondary" onclick="openMoveModal('${f.file_name}')">Move</button>
+          <button class="btn danger" onclick="openDeleteModal('${f.file_name}')">Delete</button>
         </td>`;
       tbody.appendChild(tr);
     }
   }
-
-  // clear select-all state
-  const all = document.getElementById("selectAll");
-  all.checked = false;
+  document.getElementById("selectAll").checked=false;
 }
 
-function spanSep(){ const s=document.createElement("span"); s.textContent="›"; s.className="sep"; return s; }
-function openFolder(name){ currentPath = [...currentPath, name]; render(); }
-
-/* ---------- folders (client-side only) ---------- */
-function createFolder(){
-  const base = pathToString(currentPath);
-  const name = prompt("Folder name:");
-  if(!name) return;
-  const full = (base==="All Files") ? name.trim() : `${base}/${name.trim()}`;
-  if(!full || folders.includes(full)) return;
-  folders.push(full);
-  saveState();
-  render();
-}
-
-function moveOne(file){
-  const dest = prompt("Move to folder (exact path). Existing:\n" + folders.join("\n"));
-  if(!dest) return;
-  if(!folders.includes(dest)){ alert("Folder does not exist."); return; }
-  fileFolder[file] = dest;
-  saveState();
-  render();
-}
-
-function moveSelected(sel){
-  const dest = sel.value;
-  if(!dest){ sel.value=""; return; }
-  const names=[...document.querySelectorAll(".rowcheck:checked")].map(e=>e.dataset.name);
-  if(names.length===0){ sel.value=""; return; }
-  names.forEach(n=> fileFolder[n]=dest);
-  saveState();
-  sel.value="";
-  render();
-}
-
-/* ---------- selection + bulk delete ---------- */
-function toggleAll(box){
-  document.querySelectorAll(".rowcheck").forEach(c=>c.checked=box.checked);
-  render();
-}
-async function deleteSelected(){
-  const names=[...document.querySelectorAll(".rowcheck:checked")].map(e=>e.dataset.name);
-  if(names.length===0) return;
-  await Promise.all(names.map(n=> fetch(`/delete/${n}`, {method:"DELETE"})));
-  names.forEach(n=> delete fileFolder[n]);
-  saveState();
-  loadFiles();
-}
-async function deleteOne(name){
-  await fetch(`/delete/${name}`, {method:"DELETE"});
-  delete fileFolder[name]; saveState();
-  loadFiles();
-}
-
-/* ---------- uploads ---------- */
-document.getElementById("fileInput").addEventListener("change", e=>{
-  [...e.target.files].forEach(f=> uploadFile(f));
-  e.target.value="";
+document.addEventListener("change", e=>{
+  if(e.target.classList.contains("rowcheck")) render();
 });
+document.getElementById("selectAll").addEventListener("change",e=>{
+  document.querySelectorAll(".rowcheck").forEach(c=>c.checked=e.target.checked);
+  render();
+});
+
 function onDrag(e){ e.preventDefault(); document.getElementById("drop").classList.add("drag"); }
 function onLeave(e){ e.preventDefault(); document.getElementById("drop").classList.remove("drag"); }
 function onDrop(e){
   e.preventDefault(); onLeave(e);
-  [...e.dataTransfer.files].forEach(f=> uploadFile(f));
+  [...e.dataTransfer.files].forEach(f=>uploadFile(f));
 }
 
-function showProgress(name, pct){
-  const bar=document.getElementById("progress");
-  const fill=document.getElementById("pfill");
-  const ptxt=document.getElementById("ptext");
-  const pnum=document.getElementById("pnum");
-  bar.style.display="flex";
-  ptxt.textContent = `Uploading ${name}`;
-  fill.style.width = `${pct}%`;
-  pnum.textContent = `${Math.round(pct)}%`;
-  if(pct>=100){ setTimeout(()=>{ bar.style.display="none"; fill.style.width="0%"; }, 600); }
-}
-
-function currentFolderPath(){ return pathToString(currentPath); }
+document.getElementById("fileInput").addEventListener("change",e=>{
+  [...e.target.files].forEach(f=>uploadFile(f));
+  e.target.value="";
+});
 
 function uploadFile(file){
-  const xhr = new XMLHttpRequest();
+  const xhr=new XMLHttpRequest();
   xhr.open("POST","/upload");
-  xhr.upload.onprogress = e => { if(e.lengthComputable) showProgress(file.name, (e.loaded/e.total)*100); };
-  xhr.onload = () => {
-    showProgress(file.name,100);
-    // remember assignment to current folder
-    const dest = currentFolderPath();
-    if(dest!=="All Files") fileFolder[file.name]=dest;
-    saveState();
-    loadFiles();
+  xhr.upload.onprogress=e=>{
+    if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
   };
-  const form = new FormData();
-  form.append("file", file);
+  xhr.onload=()=>{
+    if(xhr.status===200){
+      const uploaded=JSON.parse(xhr.responseText);
+      files.push(uploaded);
+      const dest=pathToString(currentPath);
+      if(dest!=="All Files") fileFolder[uploaded.file_name]=dest;
+      render();
+    }
+  };
+  const form=new FormData();
+  form.append("file",file);
   xhr.send(form);
 }
 
-/* ---------- init ---------- */
+/* ---------- In-Window Modals ---------- */
+function showModal(title, contentHTML, onConfirm){
+  const modal=document.createElement("div");
+  modal.className="modal";
+  modal.innerHTML=`
+    <div class="modal-box">
+      <h3>${title}</h3>
+      <div class="modal-body">${contentHTML}</div>
+      <div class="actions">
+        <button class="btn secondary" id="cancelBtn">Cancel</button>
+        <button class="btn" id="okBtn">OK</button>
+      </div>
+    </div>`;
+  document.querySelector(".frame").appendChild(modal);
+  modal.querySelector("#cancelBtn").onclick=()=>modal.remove();
+  modal.querySelector("#okBtn").onclick=()=>{
+    onConfirm(modal);
+    modal.remove();
+  };
+}
+
+function openNewFolderModal(){
+  showModal("New Folder","<input id='folderName' placeholder='Folder name'/>", modal=>{
+    const val=modal.querySelector("#folderName").value.trim();
+    if(!val) return;
+    const full=pathToString(currentPath)==="All Files"?val:`${pathToString(currentPath)}/${val}`;
+    if(!folders.includes(full)) folders.push(full);
+    render();
+  });
+}
+
+function openMoveModal(singleName=null){
+  const selected = singleName ? [singleName] :
+    Array.from(document.querySelectorAll(".rowcheck:checked")).map(e=>e.dataset.name);
+  if(selected.length===0) return;
+  const opts = folders.map(f=>`<option>${f}</option>`).join("");
+  showModal("Move Files",
+    `<label>Destination:</label><select id='destSelect' style='width:100%;padding:8px;border-radius:6px'>${opts}</select>`,
+    modal=>{
+      const dest=modal.querySelector("#destSelect").value;
+      selected.forEach(n=>fileFolder[n]=dest);
+      render();
+    });
+}
+
+function openDeleteModal(singleName=null){
+  const selected = singleName ? [singleName] :
+    Array.from(document.querySelectorAll(".rowcheck:checked")).map(e=>e.dataset.name);
+  if(selected.length===0) return;
+  showModal("Delete Confirmation",`<p>Delete ${selected.length} file(s)? This cannot be undone.</p>`, async ()=>{
+    await Promise.all(selected.map(n=>fetch(`/delete/${n}`,{method:"DELETE"})));
+    files=files.filter(f=>!selected.includes(f.file_name));
+    render();
+  });
+}
+
 loadFiles();
 </script>
 </body>
