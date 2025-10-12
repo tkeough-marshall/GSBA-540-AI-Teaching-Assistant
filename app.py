@@ -199,7 +199,7 @@ def upload_file():
 
     # 1) Storage upload (flat, upsert)
     try:
-        res = supabase.storage.from_(BUCKET).upload(name, data, upsert=True)
+        res = supabase.storage.from_(BUCKET).upload(name, data)
         if hasattr(res, "error") and res.error is not None:
             raise Exception(res.error.message)
         log(f"📦 Stored: {name}")
