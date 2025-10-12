@@ -5,16 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>About — MOR 565 AI Teaching Assistant</title>
 <link rel="icon" href="/static/favicon.ico">
+<link rel="preload" as="image" href="/static/keough_headshot.jpg">
 
 <style>
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: #fafafa;
   color: #222;
 }
 
-/* keep content styling only — remove header rules */
+/* main layout */
 .main {
   max-width: 1000px;
   margin: 40px auto;
@@ -26,20 +27,59 @@ body {
   gap: 40px;
 }
 
+/* headshot image */
 img {
   width: 240px;
+  aspect-ratio: 3 / 4;
   height: auto;
   border-radius: 12px;
   object-fit: cover;
+  background-color: #f4f4f4; /* prevents flicker before image loads */
+  flex-shrink: 0;
 }
 
-.text { flex: 1; }
-h1 { color: #990000; margin-top: 0; }
-p { line-height: 1.6; margin-bottom: 1em; }
-.footer { margin-top: 24px; font-size: .9rem; color: #666; }
+.text {
+  flex: 1;
+}
 
-a { color: #990000; text-decoration: none; }
-a:hover { text-decoration: underline; }
+h1 {
+  color: #990000;
+  margin-top: 0;
+}
+
+p {
+  line-height: 1.6;
+  margin-bottom: 1em;
+}
+
+.footer {
+  margin-top: 24px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+a {
+  color: #990000;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* responsive layout */
+@media (max-width: 700px) {
+  .main {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  img {
+    width: 60%;
+    max-width: 300px;
+  }
+}
 </style>
 </head>
 
