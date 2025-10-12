@@ -52,10 +52,10 @@ tbody tr:hover{background:#fff6f6}
 }
 .notice.show { opacity: 1; }
 
-/* password overlay */
+/* login overlay */
 #authOverlay {
   position: fixed;
-  top: 80px; /* keeps header visible */
+  top: 80px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -79,12 +79,13 @@ tbody tr:hover{background:#fff6f6}
   padding: 10px 12px;
   border: 1px solid #ccc;
   border-radius: 8px;
-  width: 200px;
+  width: 220px;
   text-align: center;
   font-size: 1rem;
+  margin-bottom: 10px;
 }
 #authBox button {
-  margin-top: 12px;
+  margin-top: 6px;
   padding: 8px 14px;
   background: var(--cardinal);
   color: #fff;
@@ -107,11 +108,11 @@ tbody tr:hover{background:#fff6f6}
 
 <div id="authOverlay">
   <div id="authBox">
-    <h2>Restricted Access</h2>
-    <p style="margin-bottom:8px;color:#444;">Enter password to continue</p>
-    <input type="password" id="authInput" placeholder="Password" />
-    <button onclick="checkAuth()">Enter</button>
-    <div id="authError">Incorrect password. Try again.</div>
+    <h2>Admin Login</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="loginBtn">Sign In</button>
+    <div id="authError">Login failed. Check credentials.</div>
   </div>
 </div>
 
@@ -156,25 +157,34 @@ tbody tr:hover{background:#fff6f6}
 
 <div class="notice" id="notice"></div>
 
-<script>
-const PASS = "marshall565";
+<!-- Supabase Auth + File Logic -->
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+const SUPABASE_URL = "{{ SUPABASE_URL }}";
+const SUPABASE_KEY = "{{ SUPABASE_ANON_KEY }}";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = s => document.querySelector(s);
 
-if (sessionStorage.getItem("authOK")) {
-  $('#authOverlay').style.display = "none";
+/* --- Auth --- */
+if (sessionStorage.getItem("jwt")) {
+  document.getElementById("authOverlay").style.display = "none";
 }
 
-function checkAuth() {
-  const input = $('#authInput').value.trim();
-  if (input === PASS) {
-    sessionStorage.setItem("authOK", "true");
-    $('#authOverlay').style.display = "none";
-  } else {
-    $('#authError').style.display = "block";
+async function signIn() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    document.getElementById("authError").style.display = "block";
+    return;
   }
+  const token = (await supabase.auth.getSession()).data.session.access_token;
+  sessionStorage.setItem("jwt", token);
+  document.getElementById("authOverlay").style.display = "none";
 }
+document.getElementById("loginBtn").addEventListener("click", signIn);
 
-/* ---- notifications ---- */
+/* --- Notifications --- */
 function showNotice(msg) {
   const n = $('#notice');
   n.textContent = msg;
@@ -182,7 +192,7 @@ function showNotice(msg) {
   setTimeout(()=> n.classList.remove('show'), 2000);
 }
 
-/* ---- progress ---- */
+/* --- Progress --- */
 function showProgress(name,pct){
   const bar=$('#progress');
   bar.style.display="flex";
@@ -192,7 +202,7 @@ function showProgress(name,pct){
   if(pct>=100) setTimeout(()=>{ bar.style.display="none"; $('#pfill').style.width="0%"; },600);
 }
 
-/* ---- load + render ---- */
+/* --- Files --- */
 let files = [];
 const selected = new Set();
 
@@ -232,7 +242,7 @@ function renderFiles(){
 }
 window.addEventListener("DOMContentLoaded", loadFiles);
 
-/* ---- selection ---- */
+/* --- Selection --- */
 $('#tbody').addEventListener('change', e=>{
   if(e.target.classList.contains('rowcheck')){
     const name=e.target.dataset.name;
@@ -249,11 +259,26 @@ $('#selectAll').addEventListener('change', e=>{
   renderFiles();
 });
 
-/* ---- delete ---- */
+/* --- Delete --- */
+window.deleteFile = async function(name){
+  const jwt = sessionStorage.getItem("jwt");
+  await fetch(`/delete/${encodeURIComponent(name)}`, {
+    method:"DELETE",
+    headers:{ Authorization: "Bearer " + jwt }
+  });
+  files = files.filter(f=>f.file_name!==name);
+  renderFiles();
+  showNotice(`${name} deleted`);
+}
+
 $('#deleteBtn').addEventListener('click', async ()=>{
+  const jwt = sessionStorage.getItem("jwt");
   if(selected.size===0) return;
   for(const name of selected){
-    await fetch(`/delete/${encodeURIComponent(name)}`,{method:"DELETE"});
+    await fetch(`/delete/${encodeURIComponent(name)}`,{
+      method:"DELETE",
+      headers:{ Authorization: "Bearer " + jwt }
+    });
   }
   files = files.filter(f => !selected.has(f.file_name));
   showNotice(`${selected.size} file(s) deleted`);
@@ -261,60 +286,41 @@ $('#deleteBtn').addEventListener('click', async ()=>{
   renderFiles();
 });
 
-async function deleteFile(name){
-  await fetch(`/delete/${encodeURIComponent(name)}`,{method:"DELETE"});
-  files = files.filter(f=>f.file_name!==name);
-  renderFiles();
-  showNotice(`${name} deleted`);
-}
-
-/* ---- drag & drop ---- */
+/* --- Upload --- */
 function onDrag(e){ e.preventDefault(); $('#drop').classList.add('drag'); }
 function onLeave(e){ e.preventDefault(); $('#drop').classList.remove('drag'); }
-
-/* ---- upload handling ---- */
-async function uploadFilesSequentially(fileList){
-  for(const file of fileList){
-    await uploadFile(file);
-  }
-}
-
-$('#fileInput').addEventListener('change', async e=>{
-  const list = [...e.target.files];
-  e.target.value="";
-  if(!list.length) return;
-  await uploadFilesSequentially(list);
-});
-
 function onDrop(e){
-  e.preventDefault();
-  onLeave(e);
-  const list = [...e.dataTransfer.files];
-  if(!list.length) return;
+  e.preventDefault(); onLeave(e);
+  const list=[...e.dataTransfer.files]; if(!list.length) return;
   uploadFilesSequentially(list);
 }
+$('#fileInput').addEventListener('change', async e=>{
+  const list=[...e.target.files]; e.target.value="";
+  if(!list.length) return; await uploadFilesSequentially(list);
+});
 
-function uploadFile(file){
+async function uploadFilesSequentially(list){
+  for(const file of list){ await uploadFile(file); }
+}
+async function uploadFile(file){
+  const jwt = sessionStorage.getItem("jwt");
   return new Promise(resolve=>{
     const xhr = new XMLHttpRequest();
     xhr.open("POST","/upload");
+    xhr.setRequestHeader("Authorization","Bearer "+jwt);
     xhr.upload.onprogress = e=>{
       if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
     };
     xhr.onload = async ()=>{
       if(xhr.status===200){
-        setTimeout(async ()=>{
-          const res = await fetch("/api/files");
-          files = await res.json();
-          renderFiles();
-          showNotice(`${file.name} uploaded`);
-        },200);
-      } else {
-        showNotice(`Upload failed: ${file.name}`);
-      }
+        const res = await fetch("/api/files");
+        files = await res.json();
+        renderFiles();
+        showNotice(`${file.name} uploaded`);
+      } else showNotice(`Upload failed: ${file.name}`);
       resolve();
     };
-    const form = new FormData();
+    const form=new FormData();
     form.append("file", file);
     xhr.send(form);
   });

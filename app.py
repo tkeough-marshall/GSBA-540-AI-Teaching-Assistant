@@ -1,4 +1,4 @@
-import os, sys, tempfile, traceback, re
+import os, sys, tempfile, traceback, re, jwt
 from zipfile import ZipFile
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
@@ -20,6 +20,7 @@ def log(msg: str): print(msg, flush=True)
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")  # add this in .env
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 EMBED_MODEL = "text-embedding-3-large"
@@ -47,6 +48,22 @@ def load_system_prompt(filepath="system_message.txt"):
 SYSTEM_PROMPT = load_system_prompt()
 
 # ==============================
+# Utility: verify Supabase JWT
+# ==============================
+def get_user_role_from_jwt():
+    """Extracts 'role' from Supabase JWT."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return None
+    try:
+        decoded = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"])
+        meta = decoded.get("user_metadata") or decoded.get("app_metadata") or {}
+        return meta.get("role")
+    except Exception as e:
+        log(f"⚠️ JWT decode failed: {e}")
+        return None
+
+# ==============================
 # Text extraction
 # ==============================
 def extract_pdf_text(path: str) -> str:
@@ -68,7 +85,6 @@ def extract_docx_text(path: str) -> str:
     except Exception as e:
         log(f"❌ python-docx failed: {e}")
         traceback.print_exc()
-    # Fallback XML
     try:
         with ZipFile(path, "r") as z:
             xml_files = [f for f in z.namelist() if f.startswith("word/") and f.endswith(".xml")]
@@ -182,73 +198,49 @@ def list_files():
         return jsonify(data.data or [])
     except Exception as e:
         log(f"❌ list_files error: {e}")
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
+    role = get_user_role_from_jwt()
+    if role != "admin":
+        return jsonify({"error": "Unauthorized"}), 403
+
     file = request.files.get("file")
     if not file:
         return jsonify({"error": "No file provided"}), 400
 
     name = secure_filename(file.filename)
     data = file.read()
-    log(f"✅ Upload received: {name} | {len(data)} bytes")
-
     tmp_path = os.path.join(tempfile.gettempdir(), name)
     with open(tmp_path, "wb") as f:
         f.write(data)
 
-    # Storage upload
     try:
         res = supabase.storage.from_(BUCKET).upload(name, data)
         if hasattr(res, "error") and res.error is not None:
             raise Exception(res.error.message)
-        log(f"📦 Stored: {name}")
-    except Exception as e:
-        log(f"❌ upload error: {e}")
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-    # Insert metadata
-    try:
         supabase.table("files").insert({
             "file_name": name,
             "file_type": os.path.splitext(name)[1].lower(),
             "source_path": name
         }).execute()
-        log(f"📝 files row inserted: {name}")
-    except Exception as e:
-        log(f"⚠️ files insert failed: {e}")
-
-    # Embed
-    try:
         result = process_and_store(tmp_path, name)
-        log(f"🧠 Embedding result: {result}")
+        return jsonify({"message": f"{name} uploaded", "embedding_result": result})
     except Exception as e:
-        log(f"⚠️ embedding failed: {e}")
-        result = {"status": "embedding_failed", "error": str(e)}
-
-    return jsonify({
-        "message": f"{name} uploaded",
-        "file_name": name,
-        "file_type": os.path.splitext(name)[1],
-        "embedding_result": result
-    })
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/delete/<name>", methods=["DELETE"])
 def delete_file(name):
+    role = get_user_role_from_jwt()
+    if role != "admin":
+        return jsonify({"error": "Unauthorized"}), 403
     try:
-        res = supabase.storage.from_(BUCKET).remove([name])
-        if hasattr(res, "error") and res.error is not None:
-            raise Exception(res.error.message)
+        supabase.storage.from_(BUCKET).remove([name])
         supabase.table("files").delete().eq("file_name", name).execute()
         supabase.table("documents").delete().filter("metadata->>source_file", "eq", name).execute()
-        log(f"🗑️ Deleted {name} from storage, files, documents")
         return jsonify({"message": f"{name} deleted"})
     except Exception as e:
-        log(f"❌ delete error: {e}")
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route("/chat", methods=["POST"])
@@ -281,12 +273,8 @@ def chat():
         ).choices[0].message.content.strip()
         return jsonify({"response": f"{ans}\n\n{src_txt}"})
     except Exception as e:
-        log(f"❌ chat error: {e}")
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-
-# -------- run --------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
