@@ -27,14 +27,14 @@ body {
   gap: 40px;
 }
 
-/* headshot image */
-img {
+/* only affect image inside .main */
+.main img {
   width: 240px;
   aspect-ratio: 3 / 4;
   height: auto;
   border-radius: 12px;
   object-fit: cover;
-  background-color: #f4f4f4; /* prevents flicker before image loads */
+  background-color: #f4f4f4;
   flex-shrink: 0;
 }
 
@@ -75,7 +75,7 @@ a:hover {
     text-align: center;
   }
 
-  img {
+  .main img {
     width: 60%;
     max-width: 300px;
   }
