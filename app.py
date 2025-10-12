@@ -6,9 +6,9 @@ from werkzeug.utils import secure_filename
 import tempfile
 import os
 import openai
-
-# Import your embedding utility
-from utils.embedding_pipeline import embed_and_upload
+import fitz  # PyMuPDF
+from docx import Document as DocxDocument
+from pptx import Presentation
 
 # ==============================
 # 🔧 Environment + Config Inputs
@@ -24,6 +24,8 @@ EMBED_MODEL = "text-embedding-3-large"
 CHAT_MODEL = "gpt-4o-mini"
 VECTOR_DIM = 3072
 TOP_K = 10
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 100
 
 # Flask App Setup
 app = Flask(__name__, static_folder="static", static_url_path="/static")
@@ -49,6 +51,67 @@ def load_system_prompt(filepath="system_message.txt"):
 
 
 SYSTEM_PROMPT = load_system_prompt()
+
+
+# ==============================
+# 🧠 Embedding + Document Ingestion Helpers
+# ==============================
+def extract_text(file_path):
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext == ".pdf":
+        doc = fitz.open(file_path)
+        return "\n".join([p.get_text("text") for p in doc if p.get_text("text")])
+    elif ext == ".docx":
+        doc = DocxDocument(file_path)
+        return "\n".join([p.text for p in doc.paragraphs if p.text])
+    elif ext == ".pptx":
+        prs = Presentation(file_path)
+        texts = []
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text.strip():
+                    texts.append(shape.text.strip())
+        return "\n".join(texts)
+    else:
+        return ""
+
+
+def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    words = text.split()
+    if len(words) <= chunk_size:
+        yield " ".join(words)
+        return
+    step = chunk_size - overlap
+    for i in range(0, len(words), step):
+        chunk = words[i:i+chunk_size]
+        yield " ".join(chunk)
+        if i + chunk_size >= len(words):
+            break
+
+
+def embed_text(text):
+    resp = openai.embeddings.create(input=[text], model=EMBED_MODEL)
+    return resp.data[0].embedding
+
+
+def process_and_store(file_path, file_name):
+    text = extract_text(file_path)
+    if not text.strip():
+        print(f"⚠️ No extractable text in {file_name}")
+        return {"status": "no_text"}
+
+    chunks = list(chunk_text(text))
+    total = 0
+    for i, chunk in enumerate(chunks):
+        try:
+            emb = embed_text(chunk)
+            meta = {"source_file": file_name, "chunk_index": i, "file_type": os.path.splitext(file_name)[1]}
+            supabase.table("documents").insert({"content": chunk, "embedding": emb, "metadata": meta}).execute()
+            total += 1
+        except Exception as e:
+            print(f"❌ Error embedding chunk {i}: {e}")
+
+    return {"status": "success", "chunks": total}
 
 
 # ==============================
@@ -85,7 +148,7 @@ def list_files():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    """Upload file → store in bucket → log in DB → embed + insert into documents"""
+    """Upload file → Supabase storage + table + embeddings"""
     file = request.files.get("file")
     if not file:
         return jsonify({"error": "No file provided"}), 400
@@ -106,8 +169,8 @@ def upload_file():
         "source_path": path
     }).execute()
 
-    # Run embedding + insert chunks into 'documents'
-    result = embed_and_upload(tmp.name)
+    # Embed + store in documents
+    result = process_and_store(tmp.name, filename)
 
     return jsonify({
         "message": f"{filename} uploaded and embedded successfully",
@@ -117,7 +180,7 @@ def upload_file():
 
 @app.route("/delete/<file_name>", methods=["DELETE"])
 def delete_file(file_name):
-    """Delete file from Storage + DB tables"""
+    """Delete file from Supabase Storage, 'files', and 'documents'"""
     supabase.storage.from_("materials").remove([file_name])
     supabase.table("files").delete().eq("file_name", file_name).execute()
     supabase.table("documents").delete().filter("metadata->>source_file", "eq", file_name).execute()
@@ -129,21 +192,17 @@ def delete_file(file_name):
 # ==============================
 @app.route("/chat", methods=["POST"])
 def chat():
-    """Embed query → retrieve → generate grounded response"""
     user_input = request.json.get("message", "").strip()
     if not user_input:
         return jsonify({"error": "No input provided"}), 400
 
     try:
-        # Step 1: Embed User Query
+        # Step 1: Embed Query
         embed_resp = openai.embeddings.create(model=EMBED_MODEL, input=[user_input])
         query_vector = embed_resp.data[0].embedding
 
         # Step 2: Retrieve Matches
-        response = supabase.rpc(
-            "match_documents",
-            {"query_embedding": query_vector, "match_count": TOP_K}
-        ).execute()
+        response = supabase.rpc("match_documents", {"query_embedding": query_vector, "match_count": TOP_K}).execute()
 
         if getattr(response, "error", None):
             return jsonify({"error": str(response.error)}), 500
@@ -173,11 +232,9 @@ def chat():
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {user_input}"}
         ]
-        chat_resp = openai.chat.completions.create(
-            model=CHAT_MODEL, messages=messages, temperature=0.2
-        )
-
+        chat_resp = openai.chat.completions.create(model=CHAT_MODEL, messages=messages, temperature=0.2)
         answer = chat_resp.choices[0].message.content.strip()
+
         return jsonify({"response": f"{answer}\n\n{formatted_sources}"})
 
     except Exception as e:
