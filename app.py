@@ -1,14 +1,16 @@
-import os, sys, tempfile, traceback
+import os, sys, tempfile, traceback, re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from supabase import create_client
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
+from zipfile import ZipFile
 
 # Parsers
 import fitz  # PyMuPDF
 from docx import Document as DocxDocument
 from pptx import Presentation
+from openai import OpenAI
 
 # -------- logging (flush for Render) --------
 os.environ["PYTHONUNBUFFERED"] = "1"
@@ -34,11 +36,7 @@ CHUNK_OVERLAP = 100
 # -------- app/clients --------
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 CORS(app)
-
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# OpenAI (v1+ SDK)
-from openai import OpenAI
 oai = OpenAI(api_key=OPENAI_API_KEY)
 
 # -------- system prompt --------
@@ -64,52 +62,58 @@ def extract_pdf_text(path: str) -> str:
     return "\n".join(parts)
 
 def extract_docx_text(path: str) -> str:
-    # paragraphs + tables
-    doc = DocxDocument(path)
     out = []
+    try:
+        doc = DocxDocument(path)
+        # paragraphs
+        for para in doc.paragraphs:
+            t = para.text.strip()
+            if t:
+                out.append(t)
+        # tables
+        for table in doc.tables:
+            for row in table.rows:
+                cells = [c.text.strip() for c in row.cells if c.text.strip()]
+                if cells:
+                    out.append(" | ".join(cells))
+        if out:
+            return "\n".join(out)
+    except Exception as e:
+        log(f"❌ python-docx failed: {e}")
+        traceback.print_exc()
 
-    # paragraphs
-    for para in doc.paragraphs:
-        t = para.text.strip()
-        if t:
-            out.append(t)
-
-    # tables
-    for table in doc.tables:
-        for row in table.rows:
-            row_cells = []
-            for cell in row.cells:
-                cell_text = cell.text.strip()
-                if cell_text:
-                    row_cells.append(cell_text)
-            if row_cells:
-                out.append(" | ".join(row_cells))
-
-    return "\n".join(out)
+    # ---- fallback XML parse ----
+    try:
+        with ZipFile(path, "r") as z:
+            files = z.namelist()
+            if "word/document.xml" in files:
+                xml_data = z.read("word/document.xml").decode("utf-8", errors="ignore")
+                text = re.sub(r"<[^>]+>", "", xml_data)
+                log(f"⚙️ fallback xml extracted {len(text)} chars")
+                return text
+            else:
+                log("⚠️ no document.xml found in docx")
+    except Exception as e:
+        log(f"❌ fallback unzip failed: {e}")
+        traceback.print_exc()
+    return ""
 
 def extract_pptx_text(path: str) -> str:
     prs = Presentation(path)
     out = []
     for slide in prs.slides:
         for shape in slide.shapes:
-            # text frames
             if hasattr(shape, "has_text_frame") and shape.has_text_frame:
                 for para in shape.text_frame.paragraphs:
                     line = "".join(run.text for run in para.runs).strip()
                     if line:
                         out.append(line)
-            # tables
             if hasattr(shape, "has_table") and shape.has_table:
                 tbl = shape.table
                 for r in tbl.rows:
-                    cells = []
-                    for c in r.cells:
-                        t = c.text.strip()
-                        if t:
-                            cells.append(t)
+                    cells = [c.text.strip() for c in r.cells if c.text.strip()]
                     if cells:
                         out.append(" | ".join(cells))
-            # fallback
             if hasattr(shape, "text"):
                 t = getattr(shape, "text", "").strip()
                 if t:
@@ -151,7 +155,6 @@ def chunk_text(text: str, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
 def embed_text(text: str):
     resp = oai.embeddings.create(model=EMBED_MODEL, input=[text])
     emb = resp.data[0].embedding
-    # optional dimension check
     if len(emb) != VECTOR_DIM:
         log(f"⚠️ embedding dims {len(emb)} != expected {VECTOR_DIM}")
     return emb
@@ -218,11 +221,16 @@ def upload_file():
         return jsonify({"error": "No file provided"}), 400
 
     filename = secure_filename(file.filename)
-    storage_path = filename  # path inside the 'materials' bucket
-
+    storage_path = filename
     tmp = tempfile.NamedTemporaryFile(delete=False)
     file.save(tmp.name)
     log(f"✅ Upload received: {filename}")
+
+    # file integrity check
+    size = os.path.getsize(tmp.name)
+    with open(tmp.name, "rb") as f:
+        sig = f.read(2)
+    log(f"📏 File size: {size} bytes | 🔍 Signature: {sig}")
 
     try:
         with open(tmp.name, "rb") as fh:
