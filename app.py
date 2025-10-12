@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from supabase import create_client
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
+import tempfile
 import os
 import openai
 
@@ -43,6 +45,7 @@ def load_system_prompt(filepath="system_message.txt"):
             "If the context doesn't include enough information, say so clearly."
         )
 
+
 SYSTEM_PROMPT = load_system_prompt()
 
 
@@ -61,10 +64,68 @@ def static_files(filename):
     """Serve static assets such as images or CSS."""
     return send_from_directory("static", filename)
 
+
 @app.route("/favicon.ico")
 def favicon():
+    """Serve favicon."""
     return send_from_directory("static", "favicon.ico")
 
+
+@app.route("/manage")
+def manage_page():
+    """Serve file management page."""
+    return send_from_directory("templates", "manage.html")
+
+
+# ==============================
+# 📁 File Management API
+# ==============================
+
+@app.route("/api/files")
+def list_files():
+    """List all uploaded files from Supabase 'files' table."""
+    data = supabase.table("files").select("*").order("uploaded_at", desc=True).execute()
+    return jsonify(data.data)
+
+
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    """Upload file to Supabase Storage + log to 'files' table."""
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "No file provided"}), 400
+
+    filename = secure_filename(file.filename)
+    path = f"materials/{filename}"
+
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    file.save(tmp.name)
+
+    # Upload to Supabase Storage bucket
+    supabase.storage().from_("materials").upload(filename, open(tmp.name, "rb"))
+
+    # Add record to 'files' table
+    supabase.table("files").insert({
+        "file_name": filename,
+        "file_type": os.path.splitext(filename)[1],
+        "source_path": path
+    }).execute()
+
+    return jsonify({"message": f"{filename} uploaded successfully"})
+
+
+@app.route("/delete/<file_name>", methods=["DELETE"])
+def delete_file(file_name):
+    """Delete file from Supabase Storage, 'files', and 'documents' tables."""
+    supabase.storage().from_("materials").remove([file_name])
+    supabase.table("files").delete().eq("file_name", file_name).execute()
+    supabase.table("documents").delete().filter("metadata->>source_file", "eq", file_name).execute()
+    return jsonify({"message": f"{file_name} deleted successfully"})
+
+
+# ==============================
+# 💬 Chat API
+# ==============================
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -74,18 +135,14 @@ def chat():
         return jsonify({"error": "No input provided"}), 400
 
     try:
-        # =======================================
         # 🧠 Step 1: Embed User Query
-        # =======================================
         embed_resp = openai.embeddings.create(
             model=EMBED_MODEL,
             input=[user_input]
         )
         query_vector = embed_resp.data[0].embedding
 
-        # =======================================
         # 📡 Step 2: Retrieve Matching Documents
-        # =======================================
         response = supabase.rpc(
             "match_documents",
             {"query_embedding": query_vector, "match_count": TOP_K}
@@ -103,45 +160,33 @@ def chat():
                 )
             })
 
-        # =======================================
-        # 🧩 Step 3: Build Context Using Metadata Fields
-        # =======================================
+        # 🧩 Step 3: Build Context
         context_blocks = []
-        sources = set()  # Track unique filenames
-
+        sources = set()
         print("\n--- Retrieved Matches ---")
         for m in matches:
             content = m.get("content", "").strip()
             source = m.get("source_file", "Unknown")
-            chunk_index = m.get("chunk_index", "N/A")
             file_type = m.get("file_type", "N/A")
             similarity = m.get("similarity", 0.0)
-
             print(f"{source} | {file_type} | similarity={similarity:.3f}")
 
             if content:
                 block = (
-                    f"[source_file: {source} | file_type: {file_type} | chunk_index: {chunk_index}]\n"
+                    f"[source_file: {source} | file_type: {file_type}]\n"
                     f"{content}"
                 )
                 context_blocks.append(block)
                 sources.add(source)
-
         print("--- End Matches ---\n")
 
-        # Join all chunks into a single context
         context = "\n\n".join(context_blocks)
-
-        # Format Sources for final response
-        source_list = sorted(sources)
         formatted_sources = (
-            f"**Sources:** " + ", ".join(f"`{s}`" for s in source_list)
-            if source_list else "**Sources:** _No course documents were relevant to this response._"
+            f"**Sources:** " + ", ".join(f"`{s}`" for s in sorted(sources))
+            if sources else "**Sources:** _No course documents were relevant to this response._"
         )
 
-        # =======================================
-        # 💬 Step 4: Construct Chat Messages
-        # =======================================
+        # 💬 Step 4: Build Chat Prompt
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -154,9 +199,7 @@ def chat():
             },
         ]
 
-        # =======================================
-        # 🤖 Step 5: Generate Model Response
-        # =======================================
+        # 🤖 Step 5: Generate Response
         chat_resp = openai.chat.completions.create(
             model=CHAT_MODEL,
             messages=messages,
@@ -165,12 +208,8 @@ def chat():
 
         answer = chat_resp.choices[0].message.content.strip()
 
-        # =======================================
-        # ✅ Step 6: Return Final Output
-        # =======================================
-        return jsonify({
-            "response": f"{answer}\n\n{formatted_sources}"
-        })
+        # ✅ Step 6: Return Response
+        return jsonify({"response": f"{answer}\n\n{formatted_sources}"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
