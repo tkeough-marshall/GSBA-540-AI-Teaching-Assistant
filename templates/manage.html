@@ -4,6 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Manage Course Files</title>
+<link rel="icon" href="/static/favicon.ico">
+
 <style>
 :root{--cardinal:#990000;--gold:#ffd700;--ink:#222;--muted:#777;--bg:#f8f8f8;--panel:#fff;--line:#e7e7e7}
 *{box-sizing:border-box}
@@ -30,10 +32,43 @@ th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:.92rem}
 tbody tr:hover{background:#fff6f6}
 .muted{color:var(--muted)}
 .row-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* notifications */
+.notice {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--cardinal);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  font-size: 0.9rem;
+  z-index: 1000;
+}
+.notice.show { opacity: 1; }
 </style>
 </head>
+
 <body>
+<script>
+const PASS = "marshall565"; // change as needed
+if (!sessionStorage.getItem("authOK")) {
+  const userInput = prompt("Enter access password:");
+  if (userInput !== PASS) {
+    window.location.href = "/";
+  } else {
+    sessionStorage.setItem("authOK", "true");
+  }
+}
+</script>
+
 {% include '_header.html' %}
+
 <div class="frame">
   <h2>Manage Uploaded Materials</h2>
   <div class="rule"></div>
@@ -70,10 +105,19 @@ tbody tr:hover{background:#fff6f6}
   </table>
 </div>
 
+<div class="notice" id="notice"></div>
+
 <script>
 let files = [];
 const selected = new Set();
 const $ = s => document.querySelector(s);
+
+function showNotice(msg) {
+  const n = $('#notice');
+  n.textContent = msg;
+  n.classList.add('show');
+  setTimeout(()=> n.classList.remove('show'), 2000);
+}
 
 /* ---- progress ---- */
 function showProgress(name,pct){
@@ -142,20 +186,20 @@ $('#selectAll').addEventListener('change', e=>{
 /* ---- delete ---- */
 $('#deleteBtn').addEventListener('click', async ()=>{
   if(selected.size===0) return;
-  if(!confirm(`Delete ${selected.size} file(s)?`)) return;
   for(const name of selected){
     await fetch(`/delete/${encodeURIComponent(name)}`,{method:"DELETE"});
   }
   files = files.filter(f => !selected.has(f.file_name));
+  showNotice(`${selected.size} file(s) deleted`);
   selected.clear();
   renderFiles();
 });
 
 async function deleteFile(name){
-  if(!confirm(`Delete ${name}?`)) return;
   await fetch(`/delete/${encodeURIComponent(name)}`,{method:"DELETE"});
   files = files.filter(f=>f.file_name!==name);
   renderFiles();
+  showNotice(`${name} deleted`);
 }
 
 /* ---- drag & drop ---- */
@@ -191,17 +235,17 @@ function uploadFile(file){
     xhr.upload.onprogress = e=>{
       if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
     };
-    xhr.onload = ()=>{
+    xhr.onload = async ()=>{
       if(xhr.status===200){
-        try{
-          const data=JSON.parse(xhr.responseText);
-          files.unshift({file_name:data.file_name,file_type:data.file_type,uploaded_at:Date.now()});
-        }catch{
-          files.unshift({file_name:file.name,file_type:file.name.split('.').pop(),uploaded_at:Date.now()});
-        }
-        renderFiles();
-      }else{
-        alert(`Upload failed: ${file.name}`);
+        // Wait briefly to let backend finish writing, then reload list
+        setTimeout(async ()=>{
+          const res = await fetch("/api/files");
+          files = await res.json();
+          renderFiles();
+          showNotice(`${file.name} uploaded`);
+        },200);
+      } else {
+        showNotice(`Upload failed: ${file.name}`);
       }
       resolve();
     };
