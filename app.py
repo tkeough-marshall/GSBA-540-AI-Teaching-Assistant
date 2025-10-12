@@ -60,17 +60,14 @@ def extract_docx_text(path: str) -> str:
         doc = DocxDocument(path)
         for para in doc.paragraphs:
             t = para.text.strip()
-            if t:
-                out.append(t)
+            if t: out.append(t)
         for table in doc.tables:
             for row in table.rows:
                 cells = [c.text.strip() for c in row.cells if c.text.strip()]
-                if cells:
-                    out.append(" | ".join(cells))
+                if cells: out.append(" | ".join(cells))
     except Exception as e:
         log(f"❌ python-docx failed: {e}")
         traceback.print_exc()
-
     # Fallback XML
     try:
         with ZipFile(path, "r") as z:
@@ -95,23 +92,20 @@ def extract_pptx_text(path: str) -> str:
             if getattr(shape, "has_text_frame", False) and shape.has_text_frame:
                 for para in shape.text_frame.paragraphs:
                     line = "".join(run.text for run in para.runs).strip()
-                    if line:
-                        out.append(line)
+                    if line: out.append(line)
             if getattr(shape, "has_table", False) and shape.has_table:
                 for row in shape.table.rows:
                     cells = [c.text.strip() for c in row.cells if c.text.strip()]
-                    if cells:
-                        out.append(" | ".join(cells))
+                    if cells: out.append(" | ".join(cells))
             if hasattr(shape, "text"):
                 t = shape.text.strip()
-                if t:
-                    out.append(t)
+                if t: out.append(t)
     return "\n".join(out)
 
 def extract_text(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     try:
-        if ext == ".pdf": return extract_pdf_text(path)
+        if ext == ".pdf":  return extract_pdf_text(path)
         if ext == ".docx": return extract_docx_text(path)
         if ext == ".pptx": return extract_pptx_text(path)
         return ""
@@ -154,7 +148,11 @@ def process_and_store(path: str, filename: str):
             supabase.table("documents").insert({
                 "content": chunk,
                 "embedding": emb,
-                "metadata": {"source_file": filename, "chunk_index": i, "file_type": os.path.splitext(filename)[1].lower()}
+                "metadata": {
+                    "source_file": filename,
+                    "chunk_index": i,
+                    "file_type": os.path.splitext(filename)[1].lower()
+                }
             }).execute()
             total += 1
         except Exception as e:
@@ -166,26 +164,19 @@ def process_and_store(path: str, filename: str):
 # Routes
 # ==============================
 @app.route("/")
-def index(): return send_from_directory(".", "index.html")
+def index():
+    return send_from_directory(".", "index.html")
 
 @app.route("/manage")
-def manage(): return send_from_directory("templates", "manage.html")
+def manage():
+    return send_from_directory("templates", "manage.html")
 
 @app.route("/api/files")
 def list_files():
-    """List flat files from Supabase bucket root."""
+    """List files from the files table (authoritative)."""
     try:
-        items = supabase.storage.from_(BUCKET).list("", {"limit": 1000})
-        files = []
-        for f in items:
-            if not isinstance(f, dict) or not f.get("name"): continue
-            if f["name"].endswith("/"): continue  # skip folder placeholders
-            files.append({
-                "file_name": f["name"],
-                "file_type": os.path.splitext(f["name"])[1],
-                "uploaded_at": f.get("created_at") or f.get("updated_at")
-            })
-        return jsonify(files)
+        data = supabase.table("files").select("*").order("uploaded_at", desc=True).execute()
+        return jsonify(data.data or [])
     except Exception as e:
         log(f"❌ list_files error: {e}")
         traceback.print_exc()
@@ -193,27 +184,44 @@ def list_files():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    """Upload file flat into bucket and embed it."""
+    """Upload to Storage, insert files row, then embed."""
     file = request.files.get("file")
-    if not file: return jsonify({"error": "No file provided"}), 400
+    if not file:
+        return jsonify({"error": "No file provided"}), 400
 
     name = secure_filename(file.filename)
     data = file.read()
     log(f"✅ Upload received: {name} | {len(data)} bytes")
 
     tmp_path = os.path.join(tempfile.gettempdir(), name)
-    with open(tmp_path, "wb") as f: f.write(data)
+    with open(tmp_path, "wb") as f:
+        f.write(data)
 
+    # 1) Storage upload (flat, upsert)
     try:
         res = supabase.storage.from_(BUCKET).upload(name, data, upsert=True)
         if hasattr(res, "error") and res.error is not None:
             raise Exception(res.error.message)
-        log(f"📦 Uploaded {name} to Supabase Storage root")
+        log(f"📦 Stored: {name}")
     except Exception as e:
         log(f"❌ upload error: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+    # 2) Insert into files table (links UI <-> Storage)
+    try:
+        supabase.table("files").insert({
+            "file_name": name,
+            "file_type": os.path.splitext(name)[1].lower(),
+            "source_path": name
+            # uploaded_at handled by DB default NOW() if present
+        }).execute()
+        log(f"📝 files row inserted: {name}")
+    except Exception as e:
+        # Non-fatal: UI should still see storage, but we keep behavior consistent
+        log(f"⚠️ files insert failed: {e}")
+
+    # 3) Embed into documents (non-fatal)
     try:
         result = process_and_store(tmp_path, name)
         log(f"🧠 Embedding result: {result}")
@@ -230,13 +238,17 @@ def upload_file():
 
 @app.route("/delete/<name>", methods=["DELETE"])
 def delete_file(name):
-    """Delete from storage and embeddings."""
+    """Delete from Storage, files, and documents."""
     try:
+        # Storage
         res = supabase.storage.from_(BUCKET).remove([name])
         if hasattr(res, "error") and res.error is not None:
             raise Exception(res.error.message)
+        # files table
+        supabase.table("files").delete().eq("file_name", name).execute()
+        # embeddings
         supabase.table("documents").delete().filter("metadata->>source_file", "eq", name).execute()
-        log(f"🗑️ Deleted {name} from storage and embeddings")
+        log(f"🗑️ Deleted {name} from storage, files, documents")
         return jsonify({"message": f"{name} deleted"})
     except Exception as e:
         log(f"❌ delete error: {e}")
@@ -246,7 +258,8 @@ def delete_file(name):
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message", "").strip()
-    if not user_input: return jsonify({"error": "No input provided"}), 400
+    if not user_input:
+        return jsonify({"error": "No input provided"}), 400
     try:
         emb = oai.embeddings.create(model=EMBED_MODEL, input=[user_input]).data[0].embedding
         resp = supabase.rpc("match_documents", {"query_embedding": emb, "match_count": TOP_K}).execute()
@@ -257,15 +270,19 @@ def chat():
         for m in matches:
             c = m.get("content", "").strip()
             s = m.get("source_file", "Unknown")
-            if c: blocks.append(f"[source_file: {s}]\n{c}"); srcs.add(s)
+            if c:
+                blocks.append(f"[source_file: {s}]\n{c}")
+                srcs.add(s)
         context = "\n\n".join(blocks)
         src_txt = "**Sources:** " + ", ".join(f"`{s}`" for s in sorted(srcs))
-        ans = oai.chat.completions.create(model=CHAT_MODEL,
+        ans = oai.chat.completions.create(
+            model=CHAT_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": f"Answer using only this context:\n\n{context}\n\nQuestion: {user_input}"}
             ],
-            temperature=0.2).choices[0].message.content.strip()
+            temperature=0.2
+        ).choices[0].message.content.strip()
         return jsonify({"response": f"{ans}\n\n{src_txt}"})
     except Exception as e:
         log(f"❌ chat error: {e}")
