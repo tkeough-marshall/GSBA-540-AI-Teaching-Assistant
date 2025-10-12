@@ -37,6 +37,7 @@ app = Flask(__name__, static_folder="static", static_url_path="/static")
 CORS(app)
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 oai = OpenAI(api_key=OPENAI_API_KEY)
+BUCKET = "materials"
 
 # -------- system prompt --------
 def load_system_prompt(filepath="system_message.txt"):
@@ -73,7 +74,6 @@ def extract_docx_text(path: str) -> str:
         log(f"❌ python-docx failed: {e}")
         traceback.print_exc()
 
-    # ---- deep fallback ----
     try:
         with ZipFile(path, "r") as z:
             xml_files = [f for f in z.namelist() if f.startswith("word/") and f.endswith(".xml")]
@@ -191,58 +191,78 @@ def index():
 def manage():
     return send_from_directory("templates", "manage.html")
 
+# ---- STORAGE-BASED FILE MANAGEMENT ----
 @app.route("/api/files")
 def list_files():
-    data = supabase.table("files").select("*").order("uploaded_at", desc=True).execute()
-    return jsonify(data.data)
+    """List actual files directly from Supabase Storage."""
+    try:
+        items = supabase.storage.from_(BUCKET).list("", {"limit": 1000})
+        files = []
+        for f in items:
+            if f.get("metadata") is None:
+                continue
+            files.append({
+                "file_name": f["name"],
+                "file_type": os.path.splitext(f["name"])[1],
+                "uploaded_at": f.get("created_at") or f.get("updated_at")
+            })
+        return jsonify(files)
+    except Exception as e:
+        log(f"❌ list_files error: {e}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
+    """Upload to Supabase Storage and embed content."""
     file = request.files.get("file")
     if not file:
         return jsonify({"error": "No file provided"}), 400
 
     name = secure_filename(file.filename)
-    data = file.read()  # read file once safely
-    size = len(data)
-    sig = data[:2]
-    log(f"✅ Upload received: {name} | {size} bytes | sig={sig}")
+    data = file.read()
+    log(f"✅ Upload received: {name} | {len(data)} bytes")
 
-    # write cleanly to disk
     tmp_path = os.path.join(tempfile.gettempdir(), name)
     with open(tmp_path, "wb") as f:
         f.write(data)
 
     try:
-        supabase.storage.from_("materials").upload(name, data)
-        supabase.table("files").insert({
-            "file_name": name,
-            "file_type": os.path.splitext(name)[1].lower(),
-            "source_path": name
-        }).execute()
-        log(f"📦 Logged file: {name}")
+        res = supabase.storage.from_(BUCKET).upload(name, data)
+        if res.get("error"):
+            raise Exception(res["error"]["message"])
+        log(f"📦 Uploaded {name} to Supabase Storage")
     except Exception as e:
-        log(f"❌ upload/log error: {e}")
+        log(f"❌ upload error: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
     result = process_and_store(tmp_path, name)
     log(f"🧠 Embedding result: {result}")
-    return jsonify({"message": f"{name} uploaded", "embedding_result": result})
+
+    return jsonify({
+        "message": f"{name} uploaded",
+        "file_name": name,
+        "file_type": os.path.splitext(name)[1],
+        "embedding_result": result
+    })
 
 @app.route("/delete/<name>", methods=["DELETE"])
 def delete_file(name):
+    """Delete file from storage and clean up embeddings."""
     try:
-        supabase.storage.from_("materials").remove([name])
-        supabase.table("files").delete().eq("file_name", name).execute()
+        res = supabase.storage.from_(BUCKET).remove([name])
+        if res.get("error"):
+            raise Exception(res["error"]["message"])
         supabase.table("documents").delete().filter("metadata->>source_file", "eq", name).execute()
-        log(f"🗑️ Deleted {name}")
+        log(f"🗑️ Deleted {name} from storage and embeddings")
         return jsonify({"message": f"{name} deleted"})
     except Exception as e:
         log(f"❌ delete error: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+# ---- CHAT ----
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message", "").strip()

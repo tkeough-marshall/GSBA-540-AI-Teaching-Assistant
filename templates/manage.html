@@ -21,9 +21,6 @@ h2{margin:0 0 8px;color:var(--cardinal)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
 .bar input[type="text"]{flex:1;border:1px solid #d5d5d5;border-radius:8px;padding:9px 12px}
-.crumb{font-size:.9rem;color:#444;margin-bottom:8px}
-.crumb a{color:var(--cardinal);text-decoration:none;cursor:pointer}
-.crumb .sep{color:#bbb;margin:0 6px}
 .progress{display:none;align-items:center;gap:10px;margin:8px 0}
 .progress .track{flex:1;height:10px;background:#eee;border-radius:8px;overflow:hidden}
 .progress .fill{height:100%;width:0;background:var(--cardinal);transition:width .15s linear}
@@ -32,17 +29,7 @@ thead{background:#f6f6f6}
 th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:.92rem}
 tbody tr:hover{background:#fff6f6}
 .muted{color:var(--muted)}
-.icon.folder{width:14px;height:14px;border:2px solid var(--cardinal);border-radius:3px;margin-right:8px;display:inline-block;position:relative;vertical-align:-3px}
-.icon.folder:before{content:"";position:absolute;top:-5px;left:2px;width:8px;height:5px;background:var(--cardinal);border-radius:2px 2px 0 0}
 .row-actions{display:flex;gap:8px;justify-content:flex-end}
-
-/* lightweight in-frame modal, no backdrop */
-.modal{position:absolute;top:64px;right:24px;background:#fff;border-radius:12px;width:360px;max-width:calc(100% - 48px);padding:18px 20px;box-shadow:0 16px 32px rgba(0,0,0,.2);z-index:30}
-.modal h3{margin-top:0;font-size:1rem;color:var(--cardinal)}
-.modal input,.modal select{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin:10px 0}
-.modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
-.badge{display:inline-block;background:#f1f1f1;border:1px solid #e4e4e4;border-radius:6px;padding:3px 8px;font-size:.78rem;color:#333}
-.hidden{display:none}
 </style>
 </head>
 <body>
@@ -63,13 +50,9 @@ tbody tr:hover{background:#fff6f6}
   </div>
 
   <div class="bar">
-    <input id="search" type="text" placeholder="Search files..." oninput="render()"/>
-    <button class="btn secondary" id="newFolderBtn">New Folder</button>
-    <button id="moveBtn" class="btn secondary" disabled>Move</button>
+    <input id="search" type="text" placeholder="Search files..." oninput="renderFiles()"/>
     <button id="deleteBtn" class="btn danger" disabled>Delete Selected</button>
   </div>
-
-  <div class="crumb" id="crumb"></div>
 
   <div class="progress" id="progress">
     <span id="ptext" class="muted">Uploading…</span>
@@ -89,156 +72,97 @@ tbody tr:hover{background:#fff6f6}
     </thead>
     <tbody id="tbody"></tbody>
   </table>
-
-  <!-- Modal container -->
-  <div id="modal" class="modal hidden"></div>
 </div>
 
 <script>
-/* ---------- state ---------- */
-let files = [];                // from backend
-let folders = ["All Files"];   // folder paths: "All Files/Folder/Sub"
-let fileFolder = {};           // filename -> folder path
-let currentPath = [];          // ["Folder","Sub"]
-const selected = new Set();    // filenames selected
+let files = [];
+const selected = new Set();
 
-/* ---------- utils ---------- */
-const $ = sel => document.querySelector(sel);
-function pathToString(p){ return p.length ? p.join("/") : "All Files"; }
-function here(){ return pathToString(currentPath); }
-function show(el){ el.classList.remove("hidden"); }
-function hide(el){ el.classList.add("hidden"); }
-function clearModal(){ $('#modal').innerHTML=""; hide($('#modal')); }
+/* ---- helpers ---- */
+const $ = s => document.querySelector(s);
+function showProgress(name,pct){
+  const bar=$('#progress');
+  bar.style.display="flex";
+  $('#ptext').textContent=`Uploading ${name}`;
+  $('#pfill').style.width=`${pct}%`;
+  $('#pnum').textContent=`${Math.round(pct)}%`;
+  if(pct>=100) setTimeout(()=>{ bar.style.display="none"; $('#pfill').style.width="0%"; },600);
+}
 
-/* ---------- fetch & initial load ---------- */
+/* ---- load + render ---- */
 async function loadFiles(){
   const res = await fetch("/api/files");
   files = await res.json();
-  render();
+  renderFiles();
 }
-loadFiles();
-
-/* ---------- render ---------- */
-function render(){
-  // toolbar buttons
-  $('#deleteBtn').disabled = selected.size===0;
-  $('#moveBtn').disabled   = selected.size===0;
-
-  // breadcrumb
-  const crumb = $('#crumb'); crumb.innerHTML="";
-  const root = document.createElement("a");
-  root.textContent = "All Files";
-  root.onclick = ()=>{ currentPath=[]; render(); };
-  crumb.appendChild(root);
-  currentPath.forEach((seg,i)=>{
-    const s=document.createElement("span"); s.className="sep"; s.textContent="›"; crumb.appendChild(s);
-    const a=document.createElement("a"); a.textContent=seg; a.onclick=()=>{ currentPath=currentPath.slice(0,i+1); render(); };
-    crumb.appendChild(a);
-  });
-
-  // derive child folders for current location
-  const base = here();
-  const childFolders = folders
-    .filter(f => f.startsWith(base==="All Files" ? "" : base + "/"))
-    .map(f => f.replace(base==="All Files" ? "" : base + "/", ""))
-    .filter(x => x && !x.includes("/"))
-    .sort();
-
-  // build file rows for this folder
+function renderFiles(){
   const q = ($('#search').value||"").toLowerCase();
-  const rows = files.filter(f=>{
-    const loc = fileFolder[f.file_name] || "All Files";
-    return loc===base && f.file_name.toLowerCase().includes(q);
-  }).sort((a,b)=>a.file_name.localeCompare(b.file_name));
-
   const tbody = $('#tbody');
   tbody.innerHTML = "";
+  const filtered = files.filter(f => f.file_name.toLowerCase().includes(q));
 
-  // folder rows
-  for(const name of childFolders){
-    const tr=document.createElement("tr");
-    tr.innerHTML = `
-      <td></td>
-      <td><span class="icon folder"></span><a href="#" data-open="${name}">${name}</a> <span class="badge">Folder</span></td>
-      <td class="muted">Folder</td>
-      <td class="muted">—</td>
-      <td></td>`;
-    tbody.appendChild(tr);
-  }
-
-  // file rows
-  if(rows.length===0 && childFolders.length===0){
+  if(filtered.length===0){
     const tr=document.createElement("tr");
     tr.innerHTML=`<td></td><td class="muted" colspan="4">No files found.</td>`;
     tbody.appendChild(tr);
   } else {
-    for(const f of rows){
+    filtered.forEach(f=>{
       const checked = selected.has(f.file_name) ? "checked" : "";
       const tr=document.createElement("tr");
-      tr.innerHTML = `
+      tr.innerHTML=`
         <td><input type="checkbox" class="rowcheck" data-name="${f.file_name}" ${checked}/></td>
         <td>${f.file_name}</td>
         <td>${f.file_type || "—"}</td>
         <td>${f.uploaded_at ? new Date(f.uploaded_at).toLocaleString() : "—"}</td>
         <td class="row-actions">
-          <button class="btn secondary" data-move="${f.file_name}">Move</button>
-          <button class="btn danger" data-delete="${f.file_name}">Delete</button>
+          <button class="btn danger" onclick="deleteFile('${f.file_name}')">Delete</button>
         </td>`;
       tbody.appendChild(tr);
-    }
+    });
   }
-
-  // update header checkbox
+  $('#deleteBtn').disabled = selected.size===0;
   const allChecks = tbody.querySelectorAll('.rowcheck');
-  const allOn = [...allChecks].length && [...allChecks].every(c=>c.checked);
-  $('#selectAll').checked = allOn;
+  $('#selectAll').checked = allChecks.length && [...allChecks].every(c=>c.checked);
+}
+window.addEventListener("DOMContentLoaded", loadFiles);
+
+/* ---- selection ---- */
+$('#tbody').addEventListener('change', e=>{
+  if(e.target.classList.contains('rowcheck')){
+    const name=e.target.dataset.name;
+    if(e.target.checked) selected.add(name); else selected.delete(name);
+    renderFiles();
+  }
+});
+$('#selectAll').addEventListener('change', e=>{
+  const checks=$('#tbody').querySelectorAll('.rowcheck');
+  checks.forEach(c=>{
+    c.checked=e.target.checked;
+    if(e.target.checked) selected.add(c.dataset.name); else selected.delete(c.dataset.name);
+  });
+  renderFiles();
+});
+
+/* ---- delete ---- */
+$('#deleteBtn').addEventListener('click', async ()=>{
+  if(selected.size===0) return;
+  if(!confirm(`Delete ${selected.size} file(s)?`)) return;
+  for(const name of selected){
+    await fetch(`/delete/${encodeURIComponent(name)}`,{method:"DELETE"});
+  }
+  files = files.filter(f => !selected.has(f.file_name));
+  selected.clear();
+  renderFiles();
+});
+
+async function deleteFile(name){
+  if(!confirm(`Delete ${name}?`)) return;
+  await fetch(`/delete/${encodeURIComponent(name)}`,{method:"DELETE"});
+  files = files.filter(f=>f.file_name!==name);
+  renderFiles();
 }
 
-/* ---------- delegated table events ---------- */
-$('#tbody').addEventListener('click', (e)=>{
-  // open folder
-  const open = e.target.getAttribute('data-open');
-  if(open){ currentPath=[...currentPath, open]; render(); return; }
-
-  // move single
-  const move = e.target.getAttribute('data-move');
-  if(move){ openMoveModal([move]); return; }
-
-  // delete single
-  const del = e.target.getAttribute('data-delete');
-  if(del){ openDeleteModal([del]); return; }
-});
-
-$('#tbody').addEventListener('change', (e)=>{
-  if(e.target.classList.contains('rowcheck')){
-    const name = e.target.dataset.name;
-    if(e.target.checked) selected.add(name); else selected.delete(name);
-    render();
-  }
-});
-
-$('#selectAll').addEventListener('change', (e)=>{
-  const checks = $('#tbody').querySelectorAll('.rowcheck');
-  checks.forEach(c=>{
-    c.checked = e.target.checked;
-    const name = c.dataset.name;
-    if(e.target.checked) selected.add(name); else selected.delete(name);
-  });
-  render();
-});
-
-/* ---------- toolbar buttons ---------- */
-$('#newFolderBtn').addEventListener('click', ()=> openNewFolderModal());
-$('#moveBtn').addEventListener('click', ()=>{
-  if(selected.size===0) return;
-  openMoveModal([...selected]);
-});
-$('#deleteBtn').addEventListener('click', ()=>{
-  if(selected.size===0) return;
-  openDeleteModal([...selected]);
-});
-
-/* ---------- upload ---------- */
+/* ---- upload ---- */
 function onDrag(e){ e.preventDefault(); $('#drop').classList.add('drag'); }
 function onLeave(e){ e.preventDefault(); $('#drop').classList.remove('drag'); }
 function onDrop(e){ e.preventDefault(); onLeave(e); [...e.dataTransfer.files].forEach(f=>uploadFile(f)); }
@@ -246,104 +170,27 @@ $('#fileInput').addEventListener('change', e=>{
   [...e.target.files].forEach(f=>uploadFile(f)); e.target.value="";
 });
 
-function showProgress(name,pct){
-  const bar=$('#progress');
-  bar.style.display="flex";
-  $('#ptext').textContent=`Uploading ${name}`;
-  $('#pfill').style.width=`${pct}%`;
-  $('#pnum').textContent=`${Math.round(pct)}%`;
-  if(pct>=100) setTimeout(()=>{ bar.style.display="none"; $('#pfill').style.width="0%"; }, 500);
-}
-
 function uploadFile(file){
-  const xhr = new XMLHttpRequest();
+  const xhr=new XMLHttpRequest();
   xhr.open("POST","/upload");
-  xhr.upload.onprogress = e => { if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100); };
-  xhr.onload = () => {
-    if(xhr.status===200){
-      // accept server metadata if provided, else synthesize minimal
-      let uploaded;
-      try{ uploaded = JSON.parse(xhr.responseText); }
-      catch{ uploaded = { file_name:file.name, file_type:'.'+(file.name.split('.').pop()||''), uploaded_at:Date.now() }; }
-      files.push(uploaded);                     // immediate add
-      const dest = here();                      // respect current folder
-      if(dest !== "All Files") fileFolder[uploaded.file_name] = dest;
-      render();
-    }
+  xhr.upload.onprogress=e=>{
+    if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
   };
-  const form = new FormData();
-  form.append("file", file);
+  xhr.onload=()=>{
+    if(xhr.status===200){
+      try{
+        const data=JSON.parse(xhr.responseText);
+        files.unshift({file_name:data.file_name,file_type:data.file_type,uploaded_at:Date.now()});
+      }catch{
+        files.unshift({file_name:file.name,file_type:file.name.split('.').pop(),uploaded_at:Date.now()});
+      }
+      renderFiles();
+    }else alert("Upload failed");
+  };
+  const form=new FormData();
+  form.append("file",file);
   xhr.send(form);
 }
-
-/* ---------- modals (in-frame, no backdrop) ---------- */
-function openNewFolderModal(){
-  const box = $('#modal');
-  box.innerHTML = `
-    <h3>New Folder</h3>
-    <input id="folderName" placeholder="Folder name"/>
-    <div class="actions">
-      <button class="btn secondary" id="mCancel">Cancel</button>
-      <button class="btn" id="mOk">OK</button>
-    </div>`;
-  show(box);
-  box.querySelector('#folderName').focus();
-  box.querySelector('#mCancel').onclick = clearModal;
-  box.querySelector('#mOk').onclick = ()=>{
-    const name = box.querySelector('#folderName').value.trim();
-    if(!name){ clearModal(); return; }
-    const full = (here()==="All Files") ? name : `${here()}/${name}`;
-    if(!folders.includes(full)) folders.push(full);
-    clearModal();
-    render();
-  };
-}
-
-function openMoveModal(names){
-  const box = $('#modal');
-  const opts = folders.map(f=>`<option value="${f}">${f}</option>`).join("");
-  box.innerHTML = `
-    <h3>Move ${names.length} file(s)</h3>
-    <label class="muted">Destination</label>
-    <select id="dest">${opts}</select>
-    <div class="actions">
-      <button class="btn secondary" id="mCancel">Cancel</button>
-      <button class="btn" id="mOk">OK</button>
-    </div>`;
-  show(box);
-  box.querySelector('#mCancel').onclick = clearModal;
-  box.querySelector('#mOk').onclick = ()=>{
-    const dest = box.querySelector('#dest').value;
-    names.forEach(n=> fileFolder[n]=dest);
-    clearModal();
-    render();
-  };
-}
-
-function openDeleteModal(names){
-  const box = $('#modal');
-  box.innerHTML = `
-    <h3>Delete Files</h3>
-    <p>Delete ${names.length} file(s)?</p>
-    <div class="actions">
-      <button class="btn secondary" id="mCancel">Cancel</button>
-      <button class="btn danger" id="mOk">OK</button>
-    </div>`;
-  show(box);
-  box.querySelector('#mCancel').onclick = clearModal;
-  box.querySelector('#mOk').onclick = async ()=>{
-    await Promise.all(names.map(n=> fetch(`/delete/${encodeURIComponent(n)}`, {method:"DELETE"})));
-    files = files.filter(f=> !names.includes(f.file_name));
-    names.forEach(n=> selected.delete(n));
-    clearModal();
-    render();
-  };
-}
-
-/* ---------- keyboard niceties ---------- */
-document.addEventListener('keydown',(e)=>{
-  if(e.key==="Escape") clearModal();
-});
 </script>
 </body>
 </html>
