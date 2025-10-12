@@ -288,6 +288,11 @@ def chat():
         log(f"❌ chat error: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/about")
+def about():
+    return send_from_directory("templates", "about.html")
+
 
 # -------- run --------
 if __name__ == "__main__":

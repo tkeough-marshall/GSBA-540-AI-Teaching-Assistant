@@ -409,6 +409,17 @@
     function closeModal() {
       document.getElementById("intro-modal").style.display = "none";
     }
+
+    // ===== Only show popup once per browser session =====
+    window.addEventListener("load", () => {
+      const modal = document.getElementById("intro-modal");
+      if (!sessionStorage.getItem("popupShown")) {
+        modal.style.display = "flex";
+        sessionStorage.setItem("popupShown", "true");
+      } else {
+        modal.style.display = "none";
+      }
+    });
   </script>
 </body>
 </html>
