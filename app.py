@@ -31,13 +31,13 @@ VECTOR_DIM  = 3072
 TOP_K = 10
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
+BUCKET = "materials"
 
 # -------- clients --------
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 CORS(app)
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 oai = OpenAI(api_key=OPENAI_API_KEY)
-BUCKET = "materials"
 
 # -------- system prompt --------
 def load_system_prompt(filepath="system_message.txt"):
@@ -74,6 +74,7 @@ def extract_docx_text(path: str) -> str:
         log(f"❌ python-docx failed: {e}")
         traceback.print_exc()
 
+    # fallback XML
     try:
         with ZipFile(path, "r") as z:
             xml_files = [f for f in z.namelist() if f.startswith("word/") and f.endswith(".xml")]
@@ -191,7 +192,6 @@ def index():
 def manage():
     return send_from_directory("templates", "manage.html")
 
-# ---- STORAGE-BASED FILE MANAGEMENT ----
 @app.route("/api/files")
 def list_files():
     """List actual files directly from Supabase Storage."""
@@ -199,11 +199,11 @@ def list_files():
         items = supabase.storage.from_(BUCKET).list("", {"limit": 1000})
         files = []
         for f in items:
-            if f.get("metadata") is None:
+            if not isinstance(f, dict):
                 continue
             files.append({
-                "file_name": f["name"],
-                "file_type": os.path.splitext(f["name"])[1],
+                "file_name": f.get("name"),
+                "file_type": os.path.splitext(f.get("name", ""))[1],
                 "uploaded_at": f.get("created_at") or f.get("updated_at")
             })
         return jsonify(files)
@@ -228,17 +228,23 @@ def upload_file():
         f.write(data)
 
     try:
-        res = supabase.storage.from_(BUCKET).upload(name, data)
-        if res.get("error"):
-            raise Exception(res["error"]["message"])
+        res = supabase.storage.from_(BUCKET).upload(name, data, {"upsert": True})
+        if hasattr(res, "error") and res.error is not None:
+            raise Exception(res.error.message)
         log(f"📦 Uploaded {name} to Supabase Storage")
     except Exception as e:
         log(f"❌ upload error: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-    result = process_and_store(tmp_path, name)
-    log(f"🧠 Embedding result: {result}")
+    # safer embedding stage
+    try:
+        result = process_and_store(tmp_path, name)
+        log(f"🧠 Embedding result: {result}")
+    except Exception as e:
+        log(f"⚠️ embedding stage failed: {e}")
+        traceback.print_exc()
+        result = {"status": "embedding_failed", "error": str(e)}
 
     return jsonify({
         "message": f"{name} uploaded",
@@ -252,8 +258,8 @@ def delete_file(name):
     """Delete file from storage and clean up embeddings."""
     try:
         res = supabase.storage.from_(BUCKET).remove([name])
-        if res.get("error"):
-            raise Exception(res["error"]["message"])
+        if hasattr(res, "error") and res.error is not None:
+            raise Exception(res.error.message)
         supabase.table("documents").delete().filter("metadata->>source_file", "eq", name).execute()
         log(f"🗑️ Deleted {name} from storage and embeddings")
         return jsonify({"message": f"{name} deleted"})
@@ -262,7 +268,6 @@ def delete_file(name):
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-# ---- CHAT ----
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message", "").strip()
