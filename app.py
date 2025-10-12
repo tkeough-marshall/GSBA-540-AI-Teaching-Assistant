@@ -192,6 +192,11 @@ def about():
 def manage():
     return render_template("manage.html")
 
+@app.route("/login")
+def login():
+    return render_template("login.html")
+
+
 @app.route("/api/files")
 def list_files():
     try:
