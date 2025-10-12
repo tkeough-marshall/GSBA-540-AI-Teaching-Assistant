@@ -190,13 +190,13 @@
     #send-button:hover { background-color: #800000; }
     #send-button:disabled { background-color: #bbb; cursor: not-allowed; }
 
-    /* ===== MODAL (original style) ===== */
+    /* ===== MODAL ===== */
     .modal {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.55);
-      display: flex;
+      display: none; /* FIX: hidden by default */
       align-items: center;
       justify-content: center;
       z-index: 1000;
@@ -390,14 +390,12 @@
       document.getElementById("intro-modal").style.display = "none";
     }
 
-    // ===== Only show popup once per browser session =====
-    window.addEventListener("load", () => {
+    // ===== Show popup only once per session =====
+    document.addEventListener("DOMContentLoaded", () => {
       const modal = document.getElementById("intro-modal");
       if (!sessionStorage.getItem("popupShown")) {
         modal.style.display = "flex";
         sessionStorage.setItem("popupShown", "true");
-      } else {
-        modal.style.display = "none";
       }
     });
   </script>

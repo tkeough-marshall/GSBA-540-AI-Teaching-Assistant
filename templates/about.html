@@ -5,57 +5,74 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>About — MOR 565 AI Teaching Assistant</title>
 <link rel="icon" href="/static/favicon.ico">
+
 <style>
-:root {
-  --cardinal:#990000; --gold:#ffd700; --ink:#222; --muted:#666; --bg:#fafafa;
-}
 body {
-  margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  background:var(--bg); color:var(--ink);
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #fafafa;
+  color: #222;
 }
+
+/* keep content styling only — remove header rules */
 .main {
-  max-width:1000px; margin:40px auto; background:#fff; border-radius:12px;
-  box-shadow:0 2px 10px rgba(0,0,0,.08); display:flex; padding:40px; gap:40px;
+  max-width: 1000px;
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  display: flex;
+  padding: 40px;
+  gap: 40px;
 }
+
 img {
-  width:240px; height:auto; border-radius:12px; object-fit:cover;
+  width: 240px;
+  height: auto;
+  border-radius: 12px;
+  object-fit: cover;
 }
-.text {flex:1;}
-h1 {color:var(--cardinal); margin-top:0;}
-p {line-height:1.6; margin-bottom:1em;}
-.footer {margin-top:24px; font-size:.9rem; color:var(--muted);}
+
+.text { flex: 1; }
+h1 { color: #990000; margin-top: 0; }
+p { line-height: 1.6; margin-bottom: 1em; }
+.footer { margin-top: 24px; font-size: .9rem; color: #666; }
+
+a { color: #990000; text-decoration: none; }
+a:hover { text-decoration: underline; }
 </style>
 </head>
+
 <body>
-{% include '_header.html' %}
+  {% include '_header.html' %}
 
-<div class="main">
-  <img src="/static/keough_headshot.jpg" alt="Ty Keough Headshot">
-  <div class="text">
-    <h1>About This Project</h1>
-    <p><strong>MOR 565 AI Teaching Assistant</strong><br>
-    Part of the USC Marshall AI Strategy Initiative</p>
+  <div class="main">
+    <img src="/static/keough_headshot.jpg" alt="Ty Keough Headshot">
+    <div class="text">
+      <h1>About This Project</h1>
+      <p><strong>MOR 565 AI Teaching Assistant</strong><br>
+      Part of the USC Marshall AI Strategy Initiative</p>
 
-    <p>Developed to support MOR 565: Alliances & Cooperative Strategy (Spring 2025),
-    taught by Professor Kyle Mayer with support from Ty Keough, Teaching Assistant,
-    at the USC Marshall School of Business.</p>
+      <p>Developed to support MOR 565: Alliances & Cooperative Strategy (Spring 2025),
+      taught by Professor Kyle Mayer with support from Ty Keough, Teaching Assistant,
+      at the USC Marshall School of Business.</p>
 
-    <p>This assistant blends retrieval-augmented language models with verified course materials to create an intelligent, contextual learning companion. It enhances strategic thinking and reflection — not assignment completion — by helping students connect concepts, frameworks, and cases in real time.</p>
+      <p>This assistant blends retrieval-augmented language models with verified course materials to create an intelligent, contextual learning companion. It enhances strategic thinking and reflection — not assignment completion — by helping students connect concepts, frameworks, and cases in real time.</p>
 
-    <p><strong>Principles</strong><br>
-    • Operates within the academic and ethical framework of the course.<br>
-    • Maintains an MBA-level standard of clarity, professionalism, and analytical rigor.<br>
-    • Uses only verified course content and does not fabricate information.<br>
-    • Defers grading, policy, and administrative matters to Professor Mayer.</p>
+      <p><strong>Principles</strong><br>
+      • Operates within the academic and ethical framework of the course.<br>
+      • Maintains an MBA-level standard of clarity, professionalism, and analytical rigor.<br>
+      • Uses only verified course content and does not fabricate information.<br>
+      • Defers grading, policy, and administrative matters to Professor Mayer.</p>
 
-    <p>This project advances USC Marshall’s commitment to responsible AI integration in graduate business education — showcasing augmentation, transparency, and human-centered design in practice.</p>
+      <p>This project advances USC Marshall’s commitment to responsible AI integration in graduate business education — showcasing augmentation, transparency, and human-centered design in practice.</p>
 
-    <div class="footer">
-      <p>Created and monitored by Ty Keough, USC Marshall MS Finance Class of 2026.<br>
-      <a href="mailto:tkeough@marshall.usc.edu">tkeough@marshall.usc.edu</a> | 
-      <a href="https://www.linkedin.com/in/tykeough" target="_blank">LinkedIn</a></p>
+      <div class="footer">
+        <p>Created and monitored by Ty Keough, USC Marshall MS Finance Class of 2026.<br>
+        <a href="mailto:tkeough@marshall.usc.edu">tkeough@marshall.usc.edu</a> | 
+        <a href="https://www.linkedin.com/in/tykeough" target="_blank">LinkedIn</a></p>
+      </div>
     </div>
   </div>
-</div>
 </body>
 </html>
