@@ -97,7 +97,7 @@ def upload_file():
     file.save(tmp.name)
 
     # Upload to Supabase Storage bucket
-    supabase.storage().from_("materials").upload(filename, open(tmp.name, "rb"))
+    supabase.storage.from_("materials").upload(filename, open(tmp.name, "rb"))
 
     # Log record in 'files' table
     supabase.table("files").insert({
@@ -118,7 +118,7 @@ def upload_file():
 @app.route("/delete/<file_name>", methods=["DELETE"])
 def delete_file(file_name):
     """Delete file from Storage + DB tables"""
-    supabase.storage().from_("materials").remove([file_name])
+    supabase.storage.from_("materials").remove([file_name])
     supabase.table("files").delete().eq("file_name", file_name).execute()
     supabase.table("documents").delete().filter("metadata->>source_file", "eq", file_name).execute()
     return jsonify({"message": f"{file_name} deleted successfully"})
