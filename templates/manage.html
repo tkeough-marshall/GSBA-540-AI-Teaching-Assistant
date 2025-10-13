@@ -18,7 +18,7 @@ h2{margin:0 0 8px;color:var(--cardinal)}
 .rule{height:2px;background:var(--gold);width:100%;margin:6px 0 18px;border-radius:2px}
 .drop{border:2px dashed #cfcfcf;border-radius:10px;padding:22px;text-align:center;background:#fafafa;margin-bottom:12px;transition:background .2s,border-color .2s}
 .drop.drag{border-color:var(--cardinal);background:#fff6f6}
-.btn{background:var(--cardinal);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:.92rem;cursor:pointer}
+.btn{background:var(--cardinal);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:.92rem;cursor:pointer;transition:opacity .2s,background .2s}
 .btn.secondary{background:#f3f3f3;color:#333}
 .btn.danger{background:#b11226}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -45,6 +45,8 @@ tbody tr:hover{background:#fff6f6}
   margin: 80px auto; text-align: center; color: #990000;
   font-size: 1.2rem; display: none;
 }
+tr.fade-in {animation: fadeIn .4s ease;}
+@keyframes fadeIn {from{opacity:0;}to{opacity:1;}}
 </style>
 </head>
 
@@ -62,14 +64,14 @@ tbody tr:hover{background:#fff6f6}
     <div class="muted" style="margin-bottom:6px">Drag and drop your files here</div>
     <div class="muted" style="margin-bottom:10px">or</div>
     <input id="fileInput" type="file" multiple hidden />
-    <button class="btn" onclick="document.getElementById('fileInput').click()">Select Files</button>
+    <button class="btn" id="selectBtn" onclick="document.getElementById('fileInput').click()">Select Files</button>
     <div style="margin-top:12px;font-size:0.9rem;color:#666;">
       Supported filetypes: <strong>.pdf, .pptx, .docx</strong>
     </div>
   </div>
 
   <div class="bar">
-    <input id="search" type="text" placeholder="Search files..." oninput="renderFiles()"/>
+    <input id="search" type="text" placeholder="Search files..."/>
     <button id="deleteBtn" class="btn danger" disabled>Delete Selected</button>
   </div>
 
@@ -93,11 +95,10 @@ tbody tr:hover{background:#fff6f6}
   </table>
 </div>
 
-<div class="notice" id="notice"></div>
+<div id="notices"></div>
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
 const SUPABASE_URL = "{{ SUPABASE_URL }}";
 const SUPABASE_KEY = "{{ SUPABASE_ANON_KEY }}";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -107,30 +108,25 @@ const $ = s => document.querySelector(s);
 async function checkAdminAccess() {
   const { data } = await supabase.auth.getUser();
   const user = data?.user;
-
-  if (!user) {
-    window.location.href = "/login";
-    return;
-  }
-
+  if (!user) { window.location.href = "/login"; return; }
   const role = user.user_metadata?.role || user.app_metadata?.role;
   if (role !== "admin") {
     document.getElementById("accessDenied").style.display = "block";
     return;
   }
-
   document.getElementById("manageFrame").style.display = "flex";
   loadFiles();
 }
-
 checkAdminAccess();
 
 /* ---- Notifications ---- */
-function showNotice(msg) {
-  const n = $('#notice');
+function showNotice(msg, color="var(--cardinal)") {
+  const n = document.createElement('div');
+  n.className = 'notice show';
+  n.style.background = color;
   n.textContent = msg;
-  n.classList.add('show');
-  setTimeout(()=> n.classList.remove('show'), 2000);
+  document.body.appendChild(n);
+  setTimeout(()=> n.remove(), 2500);
 }
 
 /* ---- Progress ---- */
@@ -148,10 +144,19 @@ let files = [];
 const selected = new Set();
 
 async function loadFiles(){
+  $('#tbody').innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
   const res = await fetch("/api/files");
   files = await res.json();
   renderFiles();
 }
+
+/* ---- Search debounce ---- */
+let searchTimer;
+$('#search').addEventListener('input', ()=>{
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderFiles, 200);
+});
+
 function renderFiles(){
   const q = ($('#search').value||"").toLowerCase();
   const tbody = $('#tbody');
@@ -166,9 +171,10 @@ function renderFiles(){
     filtered.forEach(f=>{
       const checked = selected.has(f.file_name) ? "checked" : "";
       const tr=document.createElement("tr");
+      tr.classList.add('fade-in');
       tr.innerHTML=`
         <td><input type="checkbox" class="rowcheck" data-name="${f.file_name}" ${checked}/></td>
-        <td>${f.file_name}</td>
+        <td title="${f.file_name}">${f.file_name}</td>
         <td>${f.file_type || "—"}</td>
         <td>${f.uploaded_at ? new Date(f.uploaded_at).toLocaleString() : "—"}</td>
         <td class="row-actions">
@@ -201,21 +207,25 @@ $('#selectAll').addEventListener('change', e=>{
 
 /* ---- Delete ---- */
 window.deleteFile = async function(name){
+  if(!confirm(`Delete ${name}?`)) return;
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
+  const row = [...document.querySelectorAll('tr')].find(r=>r.textContent.includes(name));
+  if(row) row.style.opacity="0.5";
   await fetch(`/delete/${encodeURIComponent(name)}`, {
     method:"DELETE",
     headers:{ Authorization: "Bearer " + jwt }
   });
   files = files.filter(f=>f.file_name!==name);
   renderFiles();
-  showNotice(`${name} deleted`);
+  showNotice(`${name} deleted`,"#b11226");
 }
 
 $('#deleteBtn').addEventListener('click', async ()=>{
+  if(selected.size===0) return;
+  if(!confirm(`Delete ${selected.size} file(s)?`)) return;
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
-  if(selected.size===0) return;
   for(const name of selected){
     await fetch(`/delete/${encodeURIComponent(name)}`,{
       method:"DELETE",
@@ -223,7 +233,7 @@ $('#deleteBtn').addEventListener('click', async ()=>{
     });
   }
   files = files.filter(f => !selected.has(f.file_name));
-  showNotice(`${selected.size} file(s) deleted`);
+  showNotice(`${selected.size} file(s) deleted`,"#b11226");
   selected.clear();
   renderFiles();
 });
@@ -234,16 +244,31 @@ function onLeave(e){ e.preventDefault(); $('#drop').classList.remove('drag'); }
 function onDrop(e){
   e.preventDefault(); onLeave(e);
   const list=[...e.dataTransfer.files]; if(!list.length) return;
-  uploadFilesSequentially(list);
+  uploadFiles(list);
 }
 $('#fileInput').addEventListener('change', async e=>{
   const list=[...e.target.files]; e.target.value="";
-  if(!list.length) return; await uploadFilesSequentially(list);
+  if(!list.length) return;
+  await uploadFiles(list);
 });
 
-async function uploadFilesSequentially(list){
-  for(const file of list){ await uploadFile(file); }
+/* ---- Improved Uploads (parallel + feedback) ---- */
+async function uploadFiles(list){
+  $('#selectBtn').disabled = true;
+  showNotice(`Uploading ${list.length} file(s)...`);
+  const limit = 3;
+  const queue = [...list];
+  const workers = Array.from({ length: limit }, async function worker(){
+    while(queue.length){
+      const f = queue.shift();
+      if(f) await uploadFile(f);
+    }
+  });
+  await Promise.all(workers);
+  $('#selectBtn').disabled = false;
+  showNotice(`All uploads complete`);
 }
+
 async function uploadFile(file){
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
@@ -251,6 +276,7 @@ async function uploadFile(file){
     const xhr = new XMLHttpRequest();
     xhr.open("POST","/upload");
     xhr.setRequestHeader("Authorization","Bearer "+jwt);
+    xhr.timeout = 120000;
     xhr.upload.onprogress = e=>{
       if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
     };
@@ -259,10 +285,12 @@ async function uploadFile(file){
         const res = await fetch("/api/files");
         files = await res.json();
         renderFiles();
-        showNotice(`${file.name} uploaded`);
-      } else showNotice(`Upload failed: ${file.name}`);
+        showNotice(`${file.name} uploaded`,"#198754");
+      } else showNotice(`Upload failed: ${file.name}`,"#b11226");
       resolve();
     };
+    xhr.onerror = ()=>{ showNotice(`Error uploading ${file.name}`,"#b11226"); resolve(); };
+    xhr.ontimeout = ()=>{ showNotice(`${file.name} timed out`,"#b11226"); resolve(); };
     const form=new FormData();
     form.append("file", file);
     xhr.send(form);
