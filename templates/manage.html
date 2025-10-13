@@ -168,10 +168,10 @@ function confirmModal(title, message){
 }
 
 /* ---- Progress ---- */
-function showProgress(name,pct,phase="Uploading"){
+function showProgress(name,pct){
   const bar=$('#progress');
   bar.style.display="flex";
-  $('#ptext').textContent=`${phase} ${name}`;
+  $('#ptext').textContent=`Uploading ${name}`;
   $('#pfill').style.width=`${pct}%`;
   $('#pnum').textContent=`${Math.round(pct)}%`;
   if(pct>=100) setTimeout(()=>{ bar.style.display="none"; $('#pfill').style.width="0%"; },600);
@@ -290,6 +290,7 @@ $('#fileInput').addEventListener('change', async e=>{
   await uploadFiles(list);
 });
 
+/* ---- Improved Uploads with Polling Fix ---- */
 async function uploadFiles(list){
   $('#selectBtn').disabled = true;
   showNotice(`Uploading ${list.length} file(s)...`);
@@ -312,6 +313,7 @@ async function uploadFiles(list){
   });
   await Promise.all(workers);
 
+  // Wait briefly to let backend commit
   await new Promise(r => setTimeout(r, 1200));
   await refreshAfterUpload();
 
@@ -326,74 +328,46 @@ async function uploadFiles(list){
 
 async function refreshAfterUpload(){
   try {
-    const res = await fetch("/api/files?_t=" + Date.now());
+    const res = await fetch("/api/files?_t=" + Date.now()); // cache-busting
     files = await res.json();
     renderFiles();
-  } catch (err) { console.error("refreshAfterUpload failed", err); }
+  } catch (err) {
+    console.error("refreshAfterUpload failed", err);
+  }
 }
 
-/* ---- Fixed uploadFile with proper progress ---- */
-async function uploadFile(file) {
+async function uploadFile(file){
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
-
-  return new Promise((resolve) => {
+  return new Promise(resolve=>{
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/upload");
-    xhr.setRequestHeader("Authorization", "Bearer " + jwt);
-    xhr.timeout = 600000;
-
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) showProgress(file.name, (e.loaded / e.total) * 10, "Uploading");
+    xhr.open("POST","/upload");
+    xhr.setRequestHeader("Authorization","Bearer "+jwt);
+    xhr.timeout = 120000;
+    xhr.upload.onprogress = e=>{
+      if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
     };
-
-    xhr.onload = async () => {
-      // Always assume upload completed; continue polling for appearance.
-      $('#ptext').textContent = `Processing ${file.name}`;
-      let pct = 10;
-      let appeared = false;
-      let attempts = 0;
-
-      while (!appeared && attempts < 120) { // ~2 min polling window
-        try {
-          const res = await fetch("/api/files?_t=" + Date.now());
-          const list = await res.json();
-          const found = list.find((f) => f.file_name === file.name);
-          if (found) {
-            appeared = true;
-            showProgress(file.name, 100, "Processing");
-            showNotice(`${file.name} ready`, "#198754");
-            break;
-          } else {
-            pct = Math.min(pct + 1.5, 95);
-            showProgress(file.name, pct, "Processing");
-          }
-        } catch (err) {
-          console.error("poll error", err);
-        }
-        attempts++;
-        await new Promise((r) => setTimeout(r, 1000));
+    xhr.onload = async ()=>{
+      if(xhr.status===200){
+        showNotice(`${file.name} uploaded`,"#198754");
+      } else {
+        await new Promise(r=>setTimeout(r,2000));
+        const res = await fetch("/api/files");
+        const newList = await res.json();
+        if(newList.some(f=>f.file_name===file.name))
+          showNotice(`${file.name} uploaded (delayed sync)`,"#198754");
+        else
+          showNotice(`Upload failed: ${file.name}`,"#b11226");
       }
-
-      if (!appeared) showNotice(`Timed out waiting for ${file.name}`, "#b11226");
       resolve();
     };
-
-    xhr.onerror = () => {
-      showNotice(`Error uploading ${file.name}`, "#b11226");
-      resolve();
-    };
-    xhr.ontimeout = () => {
-      showNotice(`${file.name} timed out`, "#b11226");
-      resolve();
-    };
-
-    const form = new FormData();
+    xhr.onerror = ()=>{ showNotice(`Error uploading ${file.name}`,"#b11226"); resolve(); };
+    xhr.ontimeout = ()=>{ showNotice(`${file.name} timed out`,"#b11226"); resolve(); };
+    const form=new FormData();
     form.append("file", file);
     xhr.send(form);
   });
 }
-
 </script>
 </body>
 </html>
