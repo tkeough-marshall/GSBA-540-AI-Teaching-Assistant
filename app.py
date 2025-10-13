@@ -271,7 +271,7 @@ def delete_file(name):
     try:
         supabase.storage.from_(BUCKET).remove([name])
         supabase.table("files").delete().eq("file_name", name).execute()
-        supabase.table("documents").delete().filter("metadata->>source_file", "eq", name).execute()
+        supabase.table("documents").delete().eq("metadata->>source_file", name).execute()
         return jsonify({"message": f"{name} deleted"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -264,12 +264,12 @@ $('#deleteBtn').addEventListener('click', async ()=>{
   if(!confirm) return;
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
-  for(const name of selected){
-    await fetch(`/delete/${encodeURIComponent(name)}`,{
+  await Promise.all([...selected].map(name =>
+    fetch(`/delete/${encodeURIComponent(name)}`,{
       method:"DELETE",
       headers:{ Authorization: "Bearer " + jwt }
-    });
-  }
+    })
+  ));
   files = files.filter(f => !selected.has(f.file_name));
   showNotice(`${selected.size} file(s) deleted`,"#b11226");
   selected.clear();
@@ -290,14 +290,16 @@ $('#fileInput').addEventListener('change', async e=>{
   await uploadFiles(list);
 });
 
-/* ---- Improved Uploads ---- */
+/* ---- Improved Uploads with Polling Fix ---- */
 async function uploadFiles(list){
   $('#selectBtn').disabled = true;
   showNotice(`Uploading ${list.length} file(s)...`);
+
   const tbody = $('#tbody');
   list.forEach(f=>{
     const tr=document.createElement("tr");
     tr.innerHTML=`<td></td><td colspan="4" class="muted">Uploading ${f.name}...</td>`;
+    tr.dataset.tempRow = f.name;
     tbody.appendChild(tr);
   });
 
@@ -311,9 +313,12 @@ async function uploadFiles(list){
   });
   await Promise.all(workers);
 
+  // Wait briefly to let backend commit
+  await new Promise(r => setTimeout(r, 1200));
   await refreshAfterUpload();
+
   $('#selectBtn').disabled = false;
-  showNotice(`All uploads complete`,"#198754");
+  showNotice(`All uploads complete`, "#198754");
 
   document.querySelector('.frame').scrollTo({
     top: document.querySelector('.frame').scrollHeight,
@@ -322,9 +327,13 @@ async function uploadFiles(list){
 }
 
 async function refreshAfterUpload(){
-  const res = await fetch("/api/files");
-  files = await res.json();
-  renderFiles();
+  try {
+    const res = await fetch("/api/files?_t=" + Date.now()); // cache-busting
+    files = await res.json();
+    renderFiles();
+  } catch (err) {
+    console.error("refreshAfterUpload failed", err);
+  }
 }
 
 async function uploadFile(file){
