@@ -305,9 +305,29 @@ def chat():
             ],
             temperature=0.2
         ).choices[0].message.content.strip()
+
+        # --- log to rag_query_history ---
+        try:
+            decoded = decode_jwt_from_cookie()
+            user_id = decoded.get("sub") if decoded else None
+            user_email = decoded.get("email") if decoded else None
+
+            supabase.table("rag_query_history").insert({
+                "user_id": user_id,
+                "user_email": user_email,
+                "query_text": user_input,
+                "matched_docs": matches,
+                "model_response": ans,
+                "similarity_threshold": None,
+                "top_k": TOP_K
+            }).execute()
+        except Exception as log_error:
+            log(f"⚠️ Logging failed: {log_error}")
+
         return jsonify({"response": f"{ans}\n\n{src_txt}"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.context_processor
 def inject_env():
