@@ -10,6 +10,8 @@ from docx import Document as DocxDocument
 from pptx import Presentation
 from functools import wraps
 from openai import OpenAI
+import uuid
+
 
 # -------- logging --------
 os.environ["PYTHONUNBUFFERED"] = "1"
@@ -243,7 +245,7 @@ def upload_file():
 
     name = secure_filename(file.filename)
     data = file.read()
-    tmp_path = os.path.join(tempfile.gettempdir(), name)
+    tmp_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}_{secure_filename(file.filename)}")
     with open(tmp_path, "wb") as f:
         f.write(data)
 
@@ -338,4 +340,4 @@ def inject_env():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, threaded=True)
