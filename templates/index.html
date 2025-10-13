@@ -106,8 +106,37 @@
     #chat-wrapper {
       display: flex;
       justify-content: center;
+      align-items: center;
       flex: 1;
       overflow: hidden;
+      position: relative;
+    }
+
+    #chat-placeholder {
+      font-size: 1.25rem;
+      color: #777;
+      opacity: 0.9;
+      text-align: center;
+      animation: fadeIn 1.5s ease-in-out;
+    }
+
+    .blinking-cursor {
+      display: inline-block;
+      width: 10px;
+      height: 1.2em;
+      background-color: #777;
+      margin-left: 2px;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50%, 100% { opacity: 0; }
+      25%, 75% { opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     #chat-container {
@@ -118,11 +147,17 @@
       border: 1px solid #ddd;
       border-radius: 8px;
       background-color: #fafafa;
-      display: flex;
+      display: none;
       flex-direction: column;
       gap: 1rem;
       overflow-y: auto;
       scroll-behavior: smooth;
+      animation: dropDown 0.6s ease forwards;
+    }
+
+    @keyframes dropDown {
+      from { opacity: 0; transform: translateY(-15px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .chat-message {
@@ -150,12 +185,6 @@
       font-style: italic;
       opacity: 0.8;
       animation: blink 1.5s infinite;
-    }
-
-    @keyframes blink {
-      0% { opacity: 0.2; }
-      50% { opacity: 1; }
-      100% { opacity: 0.2; }
     }
 
     #input-area {
@@ -196,7 +225,7 @@
       top: 0; left: 0;
       width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.55);
-      display: none; /* FIX: hidden by default */
+      display: none;
       align-items: center;
       justify-content: center;
       z-index: 1000;
@@ -330,6 +359,7 @@
 
   <!-- ===== CHAT AREA ===== -->
   <div id="chat-wrapper">
+    <div id="chat-placeholder">Ready when you are<span class="blinking-cursor"></span></div>
     <div id="chat-container"></div>
   </div>
 
@@ -341,10 +371,15 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     const chatContainer = document.getElementById("chat-container");
+    const chatPlaceholder = document.getElementById("chat-placeholder");
     const userInput = document.getElementById("user-input");
     const sendButton = document.getElementById("send-button");
 
     function appendMessage(content, className) {
+      if (chatContainer.style.display === "none") {
+        chatPlaceholder.style.display = "none";
+        chatContainer.style.display = "flex";
+      }
       const div = document.createElement("div");
       div.className = `chat-message ${className}`;
       div.innerHTML = className === "bot" ? marked.parse(content) : content;
@@ -390,7 +425,6 @@
       document.getElementById("intro-modal").style.display = "none";
     }
 
-    // ===== Show popup only once per session =====
     document.addEventListener("DOMContentLoaded", () => {
       const modal = document.getElementById("intro-modal");
       if (!sessionStorage.getItem("popupShown")) {
