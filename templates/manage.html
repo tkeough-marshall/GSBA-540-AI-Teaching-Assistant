@@ -168,10 +168,10 @@ function confirmModal(title, message){
 }
 
 /* ---- Progress ---- */
-function showProgress(name,pct){
+function showProgress(name,pct,phase="Uploading"){
   const bar=$('#progress');
   bar.style.display="flex";
-  $('#ptext').textContent=`Uploading ${name}`;
+  $('#ptext').textContent=`${phase} ${name}`;
   $('#pfill').style.width=`${pct}%`;
   $('#pnum').textContent=`${Math.round(pct)}%`;
   if(pct>=100) setTimeout(()=>{ bar.style.display="none"; $('#pfill').style.width="0%"; },600);
@@ -290,7 +290,6 @@ $('#fileInput').addEventListener('change', async e=>{
   await uploadFiles(list);
 });
 
-/* ---- Improved Uploads with Polling Fix ---- */
 async function uploadFiles(list){
   $('#selectBtn').disabled = true;
   showNotice(`Uploading ${list.length} file(s)...`);
@@ -313,7 +312,6 @@ async function uploadFiles(list){
   });
   await Promise.all(workers);
 
-  // Wait briefly to let backend commit
   await new Promise(r => setTimeout(r, 1200));
   await refreshAfterUpload();
 
@@ -328,14 +326,13 @@ async function uploadFiles(list){
 
 async function refreshAfterUpload(){
   try {
-    const res = await fetch("/api/files?_t=" + Date.now()); // cache-busting
+    const res = await fetch("/api/files?_t=" + Date.now());
     files = await res.json();
     renderFiles();
-  } catch (err) {
-    console.error("refreshAfterUpload failed", err);
-  }
+  } catch (err) { console.error("refreshAfterUpload failed", err); }
 }
 
+/* ---- Fixed uploadFile with proper progress ---- */
 async function uploadFile(file){
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
@@ -344,39 +341,33 @@ async function uploadFile(file){
     const xhr = new XMLHttpRequest();
     xhr.open("POST","/upload");
     xhr.setRequestHeader("Authorization","Bearer "+jwt);
-    xhr.timeout = 300000; // allow long embedding jobs
+    xhr.timeout = 600000; // long uploads
 
-    // quick upload stage (0–10%)
     xhr.upload.onprogress = e=>{
-      if(e.lengthComputable) showProgress(file.name, (e.loaded/e.total)*10);
+      if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*10,"Uploading");
     };
 
     xhr.onload = async ()=>{
-      if(xhr.status===200){
-        // embedding begins
+      if(xhr.status === 200){
         $('#ptext').textContent = `Processing ${file.name}`;
         let pct = 10;
-        let done = false;
-        while(!done && pct < 100){
+        let appeared = false;
+        while(!appeared && pct < 100){
           try {
             const res = await fetch("/api/files?_t=" + Date.now());
             const list = await res.json();
             const found = list.find(f => f.file_name === file.name);
             if(found){
-              pct = Math.min(pct + 15, 100);
-              showProgress(file.name, pct);
-              if(pct >= 100){
-                done = true;
-                showNotice(`${file.name} ready`, "#198754");
-              }
+              appeared = true;
+              pct = 100;
+              showProgress(file.name, pct, "Processing");
+              showNotice(`${file.name} ready`, "#198754");
             } else {
-              pct = Math.min(pct + 3, 95);
-              showProgress(file.name, pct);
+              pct = Math.min(pct + 5, 95);
+              showProgress(file.name, pct, "Processing");
             }
-          } catch (err) {
-            console.error("poll error", err);
-          }
-          await new Promise(r => setTimeout(r, 1000));
+          } catch(e){ console.error("poll error", e); }
+          await new Promise(r=>setTimeout(r,1000));
         }
       } else {
         showNotice(`Upload failed: ${file.name}`, "#b11226");
@@ -392,7 +383,6 @@ async function uploadFile(file){
     xhr.send(form);
   });
 }
-
 </script>
 </body>
 </html>
