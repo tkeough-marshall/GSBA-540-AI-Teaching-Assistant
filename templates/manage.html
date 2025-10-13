@@ -47,6 +47,21 @@ tbody tr:hover{background:#fff6f6}
 }
 tr.fade-in {animation: fadeIn .4s ease;}
 @keyframes fadeIn {from{opacity:0;}to{opacity:1;}}
+
+/* ---- Modal ---- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1500; opacity: 0; transition: opacity 0.2s ease;
+}
+.modal-backdrop.show { opacity: 1; }
+.modal {
+  background: var(--panel); border-radius: 10px; padding: 20px 26px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2); max-width: 400px; text-align: center;
+}
+.modal h3 { margin-top: 0; color: var(--cardinal); font-size: 1.1rem; }
+.modal p { font-size: 0.95rem; color: var(--ink); margin: 12px 0 18px; }
+.modal .actions { display: flex; justify-content: center; gap: 12px; }
 </style>
 </head>
 
@@ -96,6 +111,7 @@ tr.fade-in {animation: fadeIn .4s ease;}
 </div>
 
 <div id="notices"></div>
+<div id="modalRoot"></div>
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
@@ -127,6 +143,28 @@ function showNotice(msg, color="var(--cardinal)") {
   n.textContent = msg;
   document.body.appendChild(n);
   setTimeout(()=> n.remove(), 2500);
+}
+
+/* ---- Modal ---- */
+function confirmModal(title, message){
+  return new Promise(resolve=>{
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop show';
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <h3>${title}</h3>
+      <p>${message}</p>
+      <div class="actions">
+        <button class="btn danger" id="confirmYes">Confirm</button>
+        <button class="btn secondary" id="confirmNo">Cancel</button>
+      </div>
+    `;
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+    backdrop.querySelector('#confirmYes').onclick = ()=>{ backdrop.remove(); resolve(true); };
+    backdrop.querySelector('#confirmNo').onclick = ()=>{ backdrop.remove(); resolve(false); };
+  });
 }
 
 /* ---- Progress ---- */
@@ -207,11 +245,10 @@ $('#selectAll').addEventListener('change', e=>{
 
 /* ---- Delete ---- */
 window.deleteFile = async function(name){
-  if(!confirm(`Delete ${name}?`)) return;
+  const confirm = await confirmModal("Confirm Deletion", `Delete "${name}"?`);
+  if(!confirm) return;
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
-  const row = [...document.querySelectorAll('tr')].find(r=>r.textContent.includes(name));
-  if(row) row.style.opacity="0.5";
   await fetch(`/delete/${encodeURIComponent(name)}`, {
     method:"DELETE",
     headers:{ Authorization: "Bearer " + jwt }
@@ -223,7 +260,8 @@ window.deleteFile = async function(name){
 
 $('#deleteBtn').addEventListener('click', async ()=>{
   if(selected.size===0) return;
-  if(!confirm(`Delete ${selected.size} file(s)?`)) return;
+  const confirm = await confirmModal("Confirm Deletion", `Delete ${selected.size} selected file(s)?`);
+  if(!confirm) return;
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
   for(const name of selected){
@@ -252,10 +290,17 @@ $('#fileInput').addEventListener('change', async e=>{
   await uploadFiles(list);
 });
 
-/* ---- Improved Uploads (parallel + feedback) ---- */
+/* ---- Improved Uploads ---- */
 async function uploadFiles(list){
   $('#selectBtn').disabled = true;
   showNotice(`Uploading ${list.length} file(s)...`);
+  const tbody = $('#tbody');
+  list.forEach(f=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td></td><td colspan="4" class="muted">Uploading ${f.name}...</td>`;
+    tbody.appendChild(tr);
+  });
+
   const limit = 3;
   const queue = [...list];
   const workers = Array.from({ length: limit }, async function worker(){
@@ -265,8 +310,21 @@ async function uploadFiles(list){
     }
   });
   await Promise.all(workers);
+
+  await refreshAfterUpload();
   $('#selectBtn').disabled = false;
-  showNotice(`All uploads complete`);
+  showNotice(`All uploads complete`,"#198754");
+
+  document.querySelector('.frame').scrollTo({
+    top: document.querySelector('.frame').scrollHeight,
+    behavior: 'smooth'
+  });
+}
+
+async function refreshAfterUpload(){
+  const res = await fetch("/api/files");
+  files = await res.json();
+  renderFiles();
 }
 
 async function uploadFile(file){
@@ -282,11 +340,16 @@ async function uploadFile(file){
     };
     xhr.onload = async ()=>{
       if(xhr.status===200){
-        const res = await fetch("/api/files");
-        files = await res.json();
-        renderFiles();
         showNotice(`${file.name} uploaded`,"#198754");
-      } else showNotice(`Upload failed: ${file.name}`,"#b11226");
+      } else {
+        await new Promise(r=>setTimeout(r,2000));
+        const res = await fetch("/api/files");
+        const newList = await res.json();
+        if(newList.some(f=>f.file_name===file.name))
+          showNotice(`${file.name} uploaded (delayed sync)`,"#198754");
+        else
+          showNotice(`Upload failed: ${file.name}`,"#b11226");
+      }
       resolve();
     };
     xhr.onerror = ()=>{ showNotice(`Error uploading ${file.name}`,"#b11226"); resolve(); };
