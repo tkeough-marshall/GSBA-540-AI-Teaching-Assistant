@@ -1,387 +1,442 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>MOR 565 AI Teaching Assistant</title>
-  <link rel="icon" href="/static/favicon.ico" />
-  <style>
-    body {
-      background-color: #fff;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: #2b2b2b;
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>MOR 565 AI Teaching Assistant</title>
+    <link rel="icon" href="/static/favicon.ico" />
+    <style>
+      body {
+        background-color: #fff;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          Roboto, sans-serif;
+        color: #2b2b2b;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
 
-    /* ===== HEADER ===== */
-    header {
-      background-color: #990000;
-      color: #fff;
-      padding: 1rem 2rem 0.75rem 2rem;
-      border-bottom: 4px solid #ffc72c;
-      flex-shrink: 0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-    }
+      /* ===== HEADER ===== */
+      header {
+        background-color: #990000;
+        color: #fff;
+        padding: 1rem 2rem 0.75rem 2rem;
+        border-bottom: 4px solid #ffc72c;
+        flex-shrink: 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
 
-    header h1 {
-      margin: 0;
-      font-size: 1.75rem;
-      font-weight: 600;
-    }
+      header h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+      }
 
-    header p {
-      margin: 0.25rem 0 0 0;
-      font-size: 0.95rem;
-      opacity: 0.9;
-      font-weight: 400;
-    }
+      header p {
+        margin: 0.25rem 0 0 0;
+        font-size: 0.95rem;
+        opacity: 0.9;
+        font-weight: 400;
+      }
 
-    .engineered-by {
-      margin-top: 0.35rem;
-      font-size: 0.85rem;
-      opacity: 0.9;
-      font-style: italic;
-    }
+      .engineered-by {
+        margin-top: 0.35rem;
+        font-size: 0.85rem;
+        opacity: 0.9;
+        font-style: italic;
+      }
 
-    .engineered-by a {
-      color: #ffc72c;
-      font-weight: 600;
-      text-decoration: none;
-    }
+      .engineered-by a {
+        color: #ffc72c;
+        font-weight: 600;
+        text-decoration: none;
+      }
 
-    .engineered-by a:hover {
-      text-decoration: underline;
-    }
+      .engineered-by a:hover {
+        text-decoration: underline;
+      }
 
-    .header-right {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-    }
+      .header-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
 
-    .header-logo {
-      height: 50px;
-      width: auto;
-      object-fit: contain;
-      background: none;
-      border: none;
-      mix-blend-mode: lighten;
-      filter: brightness(1.05);
-    }
+      .header-logo {
+        height: 50px;
+        width: auto;
+        object-fit: contain;
+        background: none;
+        border: none;
+        mix-blend-mode: lighten;
+        filter: brightness(1.05);
+      }
 
-    /* ===== NAV MENU ===== */
-    .nav-links {
-      display: flex;
-      gap: 1.25rem;
-      margin-top: 0.4rem;
-    }
+      /* ===== NAV MENU ===== */
+      .nav-links {
+        display: flex;
+        gap: 1.25rem;
+        margin-top: 0.4rem;
+      }
 
-    .nav-links a {
-      color: #ffc72c;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 0.95rem;
-      transition: opacity 0.2s ease;
-    }
+      .nav-links a {
+        color: #ffc72c;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: opacity 0.2s ease;
+      }
 
-    .nav-links a:hover {
-      text-decoration: underline;
-      opacity: 0.9;
-    }
+      .nav-links a:hover {
+        text-decoration: underline;
+        opacity: 0.9;
+      }
 
-    @media (max-width: 600px) {
-      .header-logo { height: 36px; }
-      header h1 { font-size: 1.5rem; }
-      header p { font-size: 0.85rem; }
-      .nav-links { gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end; }
-    }
+      @media (max-width: 600px) {
+        .header-logo {
+          height: 36px;
+        }
+        header h1 {
+          font-size: 1.5rem;
+        }
+        header p {
+          font-size: 0.85rem;
+        }
+        .nav-links {
+          gap: 0.75rem;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+      }
 
-    /* ===== CHAT ===== */
-    #chat-wrapper {
-      display: flex;
-      justify-content: center;
-      flex: 1;
-      overflow: hidden;
-    }
+      /* ===== CHAT ===== */
+      #chat-wrapper {
+        display: flex;
+        justify-content: center;
+        flex: 1;
+        overflow: hidden;
+      }
 
-    #chat-container {
-      width: 90%;
-      max-width: 1000px;
-      margin: 1.5rem auto;
-      padding: 1.5rem 2rem;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      background-color: #fafafa;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      overflow-y: auto;
-      scroll-behavior: smooth;
-    }
+      #chat-container {
+        width: 90%;
+        max-width: 1000px;
+        margin: 1.5rem auto;
+        padding: 1.5rem 2rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #fafafa;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        overflow-y: auto;
+        scroll-behavior: smooth;
+      }
 
-    .chat-message {
-      padding: 0.75rem 1rem;
-      border-radius: 6px;
-      line-height: 1.5;
-      word-break: break-word;
-    }
+      .chat-message {
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        line-height: 1.5;
+        word-break: break-word;
+      }
 
-    .user {
-      align-self: flex-end;
-      background-color: #ffe6e6;
-      border: 1px solid #f5c2c2;
-      white-space: pre-wrap;
-    }
+      .user {
+        align-self: flex-end;
+        background-color: #ffe6e6;
+        border: 1px solid #f5c2c2;
+        white-space: pre-wrap;
+      }
 
-    .bot {
-      align-self: flex-start;
-      background-color: #f2f2f2;
-      border: 1px solid #ddd;
-    }
+      .bot {
+        align-self: flex-start;
+        background-color: #f2f2f2;
+        border: 1px solid #ddd;
+      }
 
-    .typing {
-      display: inline-block;
-      font-style: italic;
-      opacity: 0.8;
-      animation: blink 1.5s infinite;
-    }
+      .typing {
+        display: inline-block;
+        font-style: italic;
+        opacity: 0.8;
+        animation: blink 1.5s infinite;
+      }
 
-    @keyframes blink {
-      0% { opacity: 0.2; }
-      50% { opacity: 1; }
-      100% { opacity: 0.2; }
-    }
+      @keyframes blink {
+        0% {
+          opacity: 0.2;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.2;
+        }
+      }
 
-    #input-area {
-      display: flex;
-      justify-content: center;
-      gap: 0.75rem;
-      padding: 1rem 2rem;
-      border-top: 1px solid #ddd;
-      flex-shrink: 0;
-      background: #fff;
-    }
+      #input-area {
+        display: flex;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 1rem 2rem;
+        border-top: 1px solid #ddd;
+        flex-shrink: 0;
+        background: #fff;
+      }
 
-    #user-input {
-      width: 80%;
-      font-size: 1rem;
-      padding: 0.75rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
+      #user-input {
+        width: 80%;
+        font-size: 1rem;
+        padding: 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+      }
 
-    #send-button {
-      background-color: #990000;
-      color: white;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background 0.2s ease;
-    }
+      #send-button {
+        background-color: #990000;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.2s ease;
+      }
 
-    #send-button:hover { background-color: #800000; }
-    #send-button:disabled { background-color: #bbb; cursor: not-allowed; }
+      #send-button:hover {
+        background-color: #800000;
+      }
 
-    /* ===== MODAL ===== */
-    .modal {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.55);
-      display: none; /* FIX: hidden by default */
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
+      #send-button:disabled {
+        background-color: #bbb;
+        cursor: not-allowed;
+      }
 
-    .modal-content {
-      position: relative;
-      background: #fff;
-      border-radius: 10px;
-      max-width: 720px;
-      padding: 2.5rem;
-      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
-      text-align: left;
-      overflow-y: auto;
-      max-height: 85vh;
-    }
+      /* ===== MODAL ===== */
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.55);
+        display: none; /* FIX: hidden by default */
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
 
-    .modal h2 {
-      color: #990000;
-      margin-top: 0;
-      font-size: 1.6rem;
-      border-bottom: 3px solid #ffc72c;
-      padding-bottom: 0.5rem;
-    }
+      .modal-content {
+        position: relative;
+        background: #fff;
+        border-radius: 10px;
+        max-width: 720px;
+        padding: 2.5rem;
+        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+        text-align: left;
+        overflow-y: auto;
+        max-height: 85vh;
+      }
 
-    .modal h3 {
-      margin-top: 1.5rem;
-      color: #2b2b2b;
-      font-size: 1.1rem;
-    }
+      .modal h2 {
+        color: #990000;
+        margin-top: 0;
+        font-size: 1.6rem;
+        border-bottom: 3px solid #ffc72c;
+        padding-bottom: 0.5rem;
+      }
 
-    .modal p {
-      font-size: 1rem;
-      line-height: 1.65;
-      margin-top: 0.5rem;
-    }
+      .modal h3 {
+        margin-top: 1.5rem;
+        color: #2b2b2b;
+        font-size: 1.1rem;
+      }
 
-    .close-x {
-      position: absolute;
-      top: 12px;
-      right: 16px;
-      font-size: 1.4rem;
-      color: #990000;
-      cursor: pointer;
-      font-weight: bold;
-    }
+      .modal p {
+        font-size: 1rem;
+        line-height: 1.65;
+        margin-top: 0.5rem;
+      }
 
-    .close-x:hover { color: #800000; }
+      .close-x {
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        font-size: 1.4rem;
+        color: #990000;
+        cursor: pointer;
+        font-weight: bold;
+      }
 
-    .contact-info {
-      margin-top: 2rem;
-      font-size: 0.95rem;
-      color: #444;
-    }
+      .close-x:hover {
+        color: #800000;
+      }
 
-    .contact-info a {
-      color: #990000;
-      text-decoration: none;
-      font-weight: 600;
-    }
+      .contact-info {
+        margin-top: 2rem;
+        font-size: 0.95rem;
+        color: #444;
+      }
 
-    .close-btn {
-      background-color: #990000;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 0.7rem 1.4rem;
-      cursor: pointer;
-      font-weight: 600;
-      float: right;
-      margin-top: 1.8rem;
-    }
+      .contact-info a {
+        color: #990000;
+        text-decoration: none;
+        font-weight: 600;
+      }
 
-    .close-btn:hover { background-color: #800000; }
-  </style>
-</head>
+      .close-btn {
+        background-color: #990000;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.7rem 1.4rem;
+        cursor: pointer;
+        font-weight: 600;
+        float: right;
+        margin-top: 1.8rem;
+      }
 
-<body>
-  {% include '_header.html' %}
+      .close-btn:hover {
+        background-color: #800000;
+      }
+    </style>
+  </head>
 
-  <!-- ===== MODAL ===== -->
-  <div id="intro-modal" class="modal">
-    <div class="modal-content">
-      <span class="close-x" onclick="closeModal()">×</span>
-      <h2>Welcome to the MOR 565 AI Teaching Assistant</h2>
-      <p>
-        This digital assistant supports <strong>MOR 565: Alliances & Cooperative Strategy (Spring 2025)</strong>, taught by
-        <strong>Professor Kyle Mayer</strong> with support from <strong>Ty Keough, Teaching Assistant</strong>, at the
-        <strong>USC Marshall School of Business</strong>.
-      </p>
-      <p>
-        Developed as part of the <strong>Marshall AI Strategy Initiative</strong>, this system represents a new model for academic engagement — blending advanced language models with curated course materials to create an intelligent, retrieval-based learning companion.
-      </p>
-      <h3>Purpose</h3>
-      <p>
-        The AI Teaching Assistant enhances strategic thinking and reflection by providing contextual explanations, conceptual frameworks, and guidance drawn directly from official MOR 565 materials. It promotes deeper understanding and disciplined application of alliance strategy concepts — not assignment completion.
-      </p>
-      <h3>Principles</h3>
-      <p>
-        • Operates within the academic and ethical framework of the course.<br>
-        • Maintains an MBA-level standard of clarity, professionalism, and analytical rigor.<br>
-        • Uses only verified course content and does not fabricate information.<br>
-        • Defers all grading, policy, and administrative matters to Professor Mayer.
-      </p>
-      <h3>About the Project</h3>
-      <p>
-        This assistant is part of USC Marshall’s broader effort to responsibly integrate generative AI into graduate business education — focusing on augmentation, transparency, and human-centered design. It demonstrates how retrieval-augmented workflows can support applied learning and strategic reasoning at scale.
-      </p>
-      <div class="contact-info">
-        <p><strong>Created and Monitored by:</strong> Ty Keough, USC Marshall MS Finance Class of 2026</p>
+  <body>
+    {% include '_header.html' %}
+
+    <!-- ===== MODAL ===== -->
+    <div id="intro-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-x" onclick="closeModal()">×</span>
+        <h2>Welcome to the MOR 565 AI Teaching Assistant</h2>
         <p>
-          <a href="https://www.linkedin.com/in/tykeough/" target="_blank">LinkedIn</a> |
-          <a href="mailto:tkeough@marshall.usc.edu">tkeough@marshall.usc.edu</a>
+          This digital assistant supports
+          <strong>MOR 565: Alliances & Cooperative Strategy (Spring 2025)</strong>,
+          taught by <strong>Professor Kyle Mayer</strong> with support from
+          <strong>Ty Keough, Teaching Assistant</strong>, at the
+          <strong>USC Marshall School of Business</strong>.
         </p>
+        <p>
+          Developed as part of the
+          <strong>Marshall AI Strategy Initiative</strong>, this system represents a
+          new model for academic engagement — blending advanced language models with
+          curated course materials to create an intelligent, retrieval-based learning
+          companion.
+        </p>
+
+        <h3>Purpose</h3>
+        <p>
+          The AI Teaching Assistant enhances strategic thinking and reflection by
+          providing contextual explanations, conceptual frameworks, and guidance drawn
+          directly from official MOR 565 materials. It promotes deeper understanding
+          and disciplined application of alliance strategy concepts — not assignment
+          completion.
+        </p>
+
+        <h3>Principles</h3>
+        <p>
+          • Operates within the academic and ethical framework of the course.<br />
+          • Maintains an MBA-level standard of clarity, professionalism, and analytical
+          rigor.<br />
+          • Uses only verified course content and does not fabricate information.<br />
+          • Defers all grading, policy, and administrative matters to Professor Mayer.
+        </p>
+
+        <h3>About the Project</h3>
+        <p>
+          This assistant is part of USC Marshall’s broader effort to responsibly
+          integrate generative AI into graduate business education — focusing on
+          augmentation, transparency, and human-centered design. It demonstrates how
+          retrieval-augmented workflows can support applied learning and strategic
+          reasoning at scale.
+        </p>
+
+        <div class="contact-info">
+          <p><strong>Created and Monitored by:</strong> Ty Keough, USC Marshall MS Finance Class of 2026</p>
+          <p>
+            <a href="https://www.linkedin.com/in/tykeough/" target="_blank">LinkedIn</a>
+            |
+            <a href="mailto:tkeough@marshall.usc.edu">tkeough@marshall.usc.edu</a>
+          </p>
+        </div>
+
+        <button class="close-btn" onclick="closeModal()">Enter Assistant</button>
       </div>
-      <button class="close-btn" onclick="closeModal()">Enter Assistant</button>
     </div>
-  </div>
 
-  <!-- ===== CHAT AREA ===== -->
-  <div id="chat-wrapper">
-    <div id="chat-container"></div>
-  </div>
+    <!-- ===== CHAT AREA ===== -->
+    <div id="chat-wrapper">
+      <div id="chat-container"></div>
+    </div>
 
-  <div id="input-area">
-    <input id="user-input" placeholder="Type your question..." />
-    <button id="send-button">Send</button>
-  </div>
+    <div id="input-area">
+      <input id="user-input" placeholder="Type your question..." />
+      <button id="send-button">Send</button>
+    </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
-    const chatContainer = document.getElementById("chat-container");
-    const userInput = document.getElementById("user-input");
-    const sendButton = document.getElementById("send-button");
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+      const chatContainer = document.getElementById("chat-container");
+      const userInput = document.getElementById("user-input");
+      const sendButton = document.getElementById("send-button");
 
-    function appendMessage(content, className) {
-      const div = document.createElement("div");
-      div.className = chat-message ${className};
-      div.innerHTML = className === "bot" ? marked.parse(content) : content;
-      chatContainer.appendChild(div);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const message = userInput.value.trim();
-      if (!message) return;
-      appendMessage("You: " + message, "user");
-      userInput.value = "";
-      sendButton.disabled = true;
-      const typing = document.createElement("div");
-      typing.className = "chat-message bot typing";
-      typing.textContent = "Analyzing...";
-      chatContainer.appendChild(typing);
-      try {
-        const response = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message })
-        });
-        const data = await response.json();
-        typing.remove();
-        appendMessage(data.response || Error: ${data.error}, "bot");
-      } catch (error) {
-        typing.remove();
-        appendMessage(Error: ${error.message}, "bot");
+      function appendMessage(content, className) {
+        const div = document.createElement("div");
+        div.className = `chat-message ${className}`;
+        div.innerHTML =
+          className === "bot" ? marked.parse(content) : content;
+        chatContainer.appendChild(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
       }
-      sendButton.disabled = false;
-    }
 
-    sendButton.addEventListener("click", sendMessage);
-    userInput.addEventListener("keypress", e => {
-      if (e.key === "Enter") sendMessage();
-    });
+      async function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return;
+        appendMessage("You: " + message, "user");
+        userInput.value = "";
+        sendButton.disabled = true;
 
-    function closeModal() {
-      document.getElementById("intro-modal").style.display = "none";
-    }
+        const typing = document.createElement("div");
+        typing.className = "chat-message bot typing";
+        typing.textContent = "Analyzing...";
+        chatContainer.appendChild(typing);
 
-    // ===== Show popup only once per session =====
-    document.addEventListener("DOMContentLoaded", () => {
-      const modal = document.getElementById("intro-modal");
-      if (!sessionStorage.getItem("popupShown")) {
-        modal.style.display = "flex";
-        sessionStorage.setItem("popupShown", "true");
+        try {
+          const response = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message }),
+          });
+
+          const data = await response.json();
+          typing.remove();
+          appendMessage(data.response || `Error: ${data.error}`, "bot");
+        } catch (error) {
+          typing.remove();
+          appendMessage(`Error: ${error.message}`, "bot");
+        }
+
+        sendButton.disabled = false;
       }
-    });
-  </script>
-</body>
+
+      sendButton.addEventListener("click", sendMessage);
+      userInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") sendMessage();
+      });
+
+      function closeModal() {
+        document.getElementById("intro-modal").style.display = "none";
+      }
+
+      // ===== Show popup only once per session =====
+      document.addEventListener("DOMContentLoaded", () => {
+        const modal = document.getElementById("intro-modal");
+        if (!sessionStorage.getItem("popupShown")) {
+          modal.style.display = "flex";
+          sessionStorage.setItem("popupShown", "true");
+        }
+      });
+    </script>
+  </body>
 </html>
