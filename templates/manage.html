@@ -339,35 +339,60 @@ async function refreshAfterUpload(){
 async function uploadFile(file){
   const { data } = await supabase.auth.getSession();
   const jwt = data.session.access_token;
+
   return new Promise(resolve=>{
     const xhr = new XMLHttpRequest();
     xhr.open("POST","/upload");
     xhr.setRequestHeader("Authorization","Bearer "+jwt);
-    xhr.timeout = 120000;
+    xhr.timeout = 300000; // allow long embedding jobs
+
+    // quick upload stage (0–10%)
     xhr.upload.onprogress = e=>{
-      if(e.lengthComputable) showProgress(file.name,(e.loaded/e.total)*100);
+      if(e.lengthComputable) showProgress(file.name, (e.loaded/e.total)*10);
     };
+
     xhr.onload = async ()=>{
       if(xhr.status===200){
-        showNotice(`${file.name} uploaded`,"#198754");
+        // embedding begins
+        $('#ptext').textContent = `Processing ${file.name}`;
+        let pct = 10;
+        let done = false;
+        while(!done && pct < 100){
+          try {
+            const res = await fetch("/api/files?_t=" + Date.now());
+            const list = await res.json();
+            const found = list.find(f => f.file_name === file.name);
+            if(found){
+              pct = Math.min(pct + 15, 100);
+              showProgress(file.name, pct);
+              if(pct >= 100){
+                done = true;
+                showNotice(`${file.name} ready`, "#198754");
+              }
+            } else {
+              pct = Math.min(pct + 3, 95);
+              showProgress(file.name, pct);
+            }
+          } catch (err) {
+            console.error("poll error", err);
+          }
+          await new Promise(r => setTimeout(r, 1000));
+        }
       } else {
-        await new Promise(r=>setTimeout(r,2000));
-        const res = await fetch("/api/files");
-        const newList = await res.json();
-        if(newList.some(f=>f.file_name===file.name))
-          showNotice(`${file.name} uploaded (delayed sync)`,"#198754");
-        else
-          showNotice(`Upload failed: ${file.name}`,"#b11226");
+        showNotice(`Upload failed: ${file.name}`, "#b11226");
       }
       resolve();
     };
-    xhr.onerror = ()=>{ showNotice(`Error uploading ${file.name}`,"#b11226"); resolve(); };
-    xhr.ontimeout = ()=>{ showNotice(`${file.name} timed out`,"#b11226"); resolve(); };
-    const form=new FormData();
+
+    xhr.onerror = ()=>{ showNotice(`Error uploading ${file.name}`, "#b11226"); resolve(); };
+    xhr.ontimeout = ()=>{ showNotice(`${file.name} timed out`, "#b11226"); resolve(); };
+
+    const form = new FormData();
     form.append("file", file);
     xhr.send(form);
   });
 }
+
 </script>
 </body>
 </html>
