@@ -55,36 +55,27 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; }
   .nav-links { gap: 0.75rem; flex-wrap: wrap; }
 }
 
-/* ===== CHAT WRAPPER ===== */
 #chat-wrapper {
-  flex: 1;
-  position: relative;
+  position: absolute;
+  top: var(--header-height, 100px);
+  bottom: 110px; /* input area + disclaimer space */
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
-}
-
-#chat-wrapper {
-  flex: 1;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  height: calc(100vh - 180px); /* subtract header + input area height */
-  margin-top: 90px; /* pushes it just below header */
 }
 
 #welcome-screen {
+  width: 100%;
+  text-align: center;
+  color: #333;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  text-align: center;
-  width: 100%;
   padding: 2rem;
-  color: #333;
 }
 
 #welcome-screen h2 {
@@ -100,6 +91,7 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; }
   color: #444;
   line-height: 1.6;
 }
+
 
 
 /* ===== CHAT CONTAINER ===== */
@@ -356,6 +348,16 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.setItem("popupShown", "true");
   }
 });
+
+// adjust top offset based on real header height
+window.addEventListener("load", () => {
+  const header = document.querySelector("header");
+  if (header) {
+    const headerHeight = header.getBoundingClientRect().height;
+    document.documentElement.style.setProperty("--header-height", `${headerHeight + 20}px`);
+  }
+});
+
 </script>
 </body>
 </html>
