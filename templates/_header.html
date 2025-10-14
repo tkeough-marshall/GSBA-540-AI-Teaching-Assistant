@@ -46,10 +46,11 @@ header p {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 0.4rem;
 }
 
 .header-logo {
-  height: 50px;
+  height: 36px;
   width: auto;
   object-fit: contain;
   mix-blend-mode: lighten;
@@ -75,8 +76,36 @@ header p {
   opacity: 0.9;
 }
 
+/* Profile area */
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+#userEmail {
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+#logoutBtn {
+  background: #b11226;
+  border: 0;
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: none;
+}
+
+#logoutBtn:hover {
+  background: #7f0000;
+}
+
 @media (max-width: 600px) {
-  .header-logo { height: 36px; }
+  .header-logo { height: 28px; }
   header h1 { font-size: 1.5rem; }
   header p { font-size: 0.85rem; }
   .nav-links { gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end; }
@@ -94,8 +123,15 @@ header p {
       — Teaching Assistant
     </div>
   </div>
+
   <div class="header-right">
     <img src="/static/USC_Marshall_Logo_White.png" alt="USC Marshall" class="header-logo" />
+
+    <div class="user-area">
+      <span id="userEmail"></span>
+      <button id="logoutBtn">Logout</button>
+    </div>
+
     <nav class="nav-links">
       <a href="/about">About</a>
       <a href="/">AI Assistant</a>
@@ -103,3 +139,26 @@ header p {
     </nav>
   </div>
 </header>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+const supabase = createClient("{{ SUPABASE_URL }}", "{{ SUPABASE_ANON_KEY }}");
+const emailSpan = document.getElementById("userEmail");
+const logoutBtn = document.getElementById("logoutBtn");
+
+async function showUser() {
+  const { data } = await supabase.auth.getUser();
+  const user = data?.user;
+  if (user) {
+    emailSpan.textContent = user.email;
+    logoutBtn.style.display = "inline-block";
+  }
+}
+showUser();
+
+logoutBtn.addEventListener("click", async () => {
+  await supabase.auth.signOut();
+  document.cookie = "jwt=; path=/; max-age=0; secure; samesite=lax";
+  window.location.href = "/login";
+});
+</script>
