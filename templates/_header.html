@@ -1,5 +1,9 @@
 <style>
 header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
   background-color: #990000;
   color: #fff;
   padding: 1rem 2rem 0.75rem 2rem;
@@ -10,6 +14,14 @@ header {
   justify-content: space-between;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Add body offset so content is not hidden under fixed header */
+body {
+  margin: 0;
+  padding-top: 130px; /* adjust if your header height changes */
+  background-color: #f8f8f8;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 header h1 {
