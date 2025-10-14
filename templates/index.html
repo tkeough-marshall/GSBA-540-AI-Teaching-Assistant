@@ -58,15 +58,16 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; }
 /* ===== MAIN CHAT WRAPPER ===== */
 #chat-wrapper {
   position: absolute;
-  top: var(--header-height, 100px);
-  bottom: 110px; /* input area + disclaimer space */
+  top: calc(var(--header-height, 100px) + 5px); /* just below the header */
+  bottom: 75px; /* just above the input area */
   left: 0;
   right: 0;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* keep chat aligned to top */
   overflow: hidden;
 }
+
 
 /* ===== WELCOME SCREEN ===== */
 #welcome-screen {
@@ -109,7 +110,7 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; }
   overflow-y: auto;
   position: absolute;
   top: calc(var(--header-height, 100px) + 2px); /* very close to header */
-  bottom: 60px; /* very close to input */
+  bottom: 80px; /* very close to input */
   left: 0;
   right: 0;
   max-height: none;
