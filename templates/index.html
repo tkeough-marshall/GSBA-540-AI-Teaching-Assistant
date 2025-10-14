@@ -5,13 +5,17 @@
 <title>MOR 565 AI Teaching Assistant</title>
 <link rel="icon" href="/static/favicon.ico" />
 <style>
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   background-color: #fff;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #2b2b2b;
   margin: 0;
   padding: 0;
-  height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -54,9 +58,11 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight:
 
 /* ===== CHAT ===== */
 #chat-wrapper {
-  display: flex;
-  justify-content: center;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   overflow: hidden;
   position: relative;
 }
@@ -69,10 +75,11 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight:
   border: 1px solid #ddd;
   border-radius: 8px;
   background-color: #fafafa;
-  display: none; /* hidden until chat starts */
+  display: none;
   flex-direction: column;
   gap: 1rem;
   overflow-y: auto;
+  max-height: calc(100vh - 200px);
   scroll-behavior: smooth;
 }
 
@@ -81,8 +88,10 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight:
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  height: 100%;
+  overflow: hidden;
   text-align: center;
   color: #333;
   padding: 2rem;
@@ -132,15 +141,16 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight:
 
 /* ===== INPUT AREA ===== */
 #input-area {
+  position: fixed;
+  bottom: 32px; /* leave space for disclaimer */
+  left: 0;
+  width: 100%;
   display: flex;
   justify-content: center;
   gap: 0.75rem;
   padding: 1rem 2rem;
   border-top: 1px solid #ddd;
-  flex-shrink: 0;
   background: #fff;
-  position: sticky;
-  bottom: 0;
 }
 #user-input {
   width: 80%;
@@ -161,6 +171,20 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight:
 }
 #send-button:hover { background-color: #800000; }
 #send-button:disabled { background-color: #bbb; cursor: not-allowed; }
+
+/* ===== DISCLAIMER ===== */
+#disclaimer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #f7f7f7;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666;
+  border-top: 1px solid #ddd;
+  padding: 0.4rem 0.5rem;
+}
 
 /* ===== MODAL ===== */
 .modal {
@@ -253,6 +277,10 @@ header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight:
   <button id="send-button">Send</button>
 </div>
 
+<div id="disclaimer">
+  AI can make mistakes. Check important info. Powered by OpenAI.
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 const chatContainer = document.getElementById("chat-container");
@@ -272,10 +300,10 @@ async function sendMessage() {
   const message = userInput.value.trim();
   if (!message) return;
 
-  // Switch from welcome to chat on first message
   if (welcomeScreen.style.display !== "none") {
     welcomeScreen.style.display = "none";
     chatContainer.style.display = "flex";
+    document.body.style.overflow = "hidden";
   }
 
   appendMessage("You: " + message, "user");
