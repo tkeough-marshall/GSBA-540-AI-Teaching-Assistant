@@ -5,16 +5,14 @@
 <title>Unauthorized</title>
 <link rel="icon" href="/static/favicon.ico">
 <style>
-/* Keep global consistency with header */
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: #f8f8f8;
-  padding-top: 130px; /* matches fixed header height */
+  padding-top: 130px; /* offset for fixed header */
   color: #222;
 }
 
-/* main content */
 .main {
   display: flex;
   align-items: center;
@@ -39,15 +37,6 @@ h2 {
 p {
   color: #555;
   font-size: 1rem;
-}
-
-/* ensure header file stays visually identical */
-header {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  z-index: 1000;
-  width: 100%;
 }
 </style>
 </head>
