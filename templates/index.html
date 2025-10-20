@@ -325,7 +325,7 @@
       border-collapse: collapse;
       margin: 1rem 0;
       font-size: 0.9rem;
-      table-layout: auto; /* allow dynamic column widths */
+      table-layout: auto;
       word-wrap: break-word;
     }
 
@@ -335,7 +335,7 @@
       padding: 8px 10px;
       text-align: left;
       vertical-align: top;
-      white-space: normal; /* enable line wrapping */
+      white-space: normal;
     }
 
     .chat-message.bot th {
@@ -345,16 +345,15 @@
 
     .chat-message.bot tr:nth-child(even) {
       background-color: #fafafa;
-    }   
+    }
 
-    .chat-message.bot {
+    /* only apply horizontal scrolling if a table is present */
+    .chat-message.bot:has(table) {
       overflow-x: auto;
       max-width: 100%;
     }
-    
   </style>
 </head>
-
 <body>
   {% include '_header.html' %}
 
