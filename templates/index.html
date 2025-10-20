@@ -318,6 +318,32 @@
       color: #888;
       margin-top: 0.3rem;
     }
+
+    /* ===== RENDERED TABLES IN CHAT ===== */
+  .chat-message.bot table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .chat-message.bot th,
+  .chat-message.bot td {
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .chat-message.bot th {
+    background-color: #f6f6f6;
+    font-weight: 600;
+  }
+  .chat-message.bot tr:nth-child(even) {
+    background-color: #fafafa;
+  }
+  .chat-message.bot {
+    overflow-x: auto;
+    max-width: 100%;
+  }
   </style>
 </head>
 
