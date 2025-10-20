@@ -413,7 +413,7 @@
         fileList.innerHTML = "";
         files.forEach(f => {
           const div = document.createElement("label");
-          div.innerHTML = `<input type='checkbox' value='${f.file_name}'> ${f.file_name}`;
+          div.innerHTML = `<input type='checkbox' value='${f.file_name}' checked> ${f.file_name}`;
           fileList.appendChild(div);
         });
       } catch {
