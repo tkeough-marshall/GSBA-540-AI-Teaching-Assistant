@@ -147,7 +147,8 @@ header p {
     <nav class="nav-links">
       <a href="/about">About</a>
       <a href="/">AI Assistant</a>
-      <a href="/manage">Manage Materials</a>
+      <!-- Hidden by default; only shown if user is admin -->
+      <a href="/manage" style="display:none;">Manage Materials</a>
     </nav>
   </div>
 </header>
@@ -155,17 +156,35 @@ header p {
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 const supabase = createClient("{{ SUPABASE_URL }}", "{{ SUPABASE_ANON_KEY }}");
+
 const emailSpan = document.getElementById("userEmail");
 const logoutBtn = document.getElementById("logoutBtn");
+const manageLink = document.querySelector('a[href="/manage"]');
+
+// Hide "Manage Materials" link by default
+if (manageLink) manageLink.style.display = "none";
 
 async function showUser() {
   const { data } = await supabase.auth.getUser();
   const user = data?.user;
+
   if (user) {
     emailSpan.textContent = user.email;
     logoutBtn.style.display = "inline-block";
+
+    // Check for admin role
+    const role = user.user_metadata?.role || user.app_metadata?.role;
+    if (role === "admin" && manageLink) {
+      manageLink.style.display = "inline";
+    }
+  } else {
+    // No user logged in
+    emailSpan.textContent = "";
+    logoutBtn.style.display = "none";
+    if (manageLink) manageLink.style.display = "none";
   }
 }
+
 showUser();
 
 logoutBtn.addEventListener("click", async () => {
