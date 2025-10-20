@@ -316,15 +316,14 @@ def chat():
 
         context = "\n\n".join(blocks)
         src_txt = "**Sources:** " + ", ".join(f"`{s}`" for s in sorted(srcs))
-
+        
         ans = oai.chat.completions.create(
             model=CHAT_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": (
-                    f"Using the context below, write a clear 'Analyst Commentary' summarizing the insights, "
-                    f"followed by a 'Quoted Evidence' section with exact quotes.\n\n"
-                    f"Context:\n{context}\n\nQuestion: {user_input}"
+                    f"Context:\n{context}\n\n"
+                    f"Question: {user_input}"
                 )}
             ],
         ).choices[0].message.content.strip()
