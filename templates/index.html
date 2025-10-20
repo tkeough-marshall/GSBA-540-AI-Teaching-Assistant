@@ -325,7 +325,7 @@
       border-collapse: collapse;
       margin: 1rem 0;
       font-size: 0.9rem;
-      table-layout: auto;
+      table-layout: auto; /* dynamic column widths */
       word-wrap: break-word;
     }
 
@@ -335,7 +335,8 @@
       padding: 8px 10px;
       text-align: left;
       vertical-align: top;
-      white-space: normal;
+      white-space: normal; /* text wraps */
+      overflow-wrap: break-word; /* prevent overflow */
     }
 
     .chat-message.bot th {
@@ -347,9 +348,9 @@
       background-color: #fafafa;
     }
 
-    /* only apply horizontal scrolling if a table is present */
-    .chat-message.bot:has(table) {
-      overflow-x: auto;
+    /* remove forced overflow from container */
+    .chat-message.bot {
+      overflow: visible;
       max-width: 100%;
     }
   </style>
