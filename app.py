@@ -281,31 +281,52 @@ def delete_file(name):
 @app.route("/chat", methods=["POST"])
 @require_login
 def chat():
-    user_input = request.json.get("message", "").strip()
+    data = request.get_json(force=True) or {}
+    user_input = data.get("message", "").strip()
+    selected_files = data.get("selected_files", [])  # ✅ correct key + robust parsing
+    log(f"🎯 Selected files: {selected_files}")
+
+
     if not user_input:
         return jsonify({"error": "No input provided"}), 400
+
     try:
         emb = oai.embeddings.create(model=EMBED_MODEL, input=[user_input]).data[0].embedding
-        resp = supabase.rpc("match_documents", {"query_embedding": emb, "match_count": TOP_K}).execute()
+
+        # ✅ Use filtered RPC if files selected
+        params = {
+            "query_embedding": emb,
+            "match_count": TOP_K,
+            "source_filter": selected_files if selected_files else None
+        }
+        resp = supabase.rpc("match_documents_filtered", params).execute()
+        log(f"🎯 Selected files: {selected_files}")  # ✅ Debug print
+
         matches = getattr(resp, "data", []) or []
         if not matches:
             return jsonify({"response": "No relevant materials.\n**Sources:** None"})
+
         blocks, srcs = [], set()
         for m in matches:
             c = m.get("content", "").strip()
-            s = m.get("source_file", "Unknown")
+            s = m.get("source_file") or m.get("metadata", {}).get("source_file", "Unknown")
             if c:
                 blocks.append(f"[source_file: {s}]\n{c}")
                 srcs.add(s)
+
         context = "\n\n".join(blocks)
         src_txt = "**Sources:** " + ", ".join(f"`{s}`" for s in sorted(srcs))
+
         ans = oai.chat.completions.create(
             model=CHAT_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Answer using only this context:\n\n{context}\n\nQuestion: {user_input}"}
+                {"role": "user", "content": (
+                    f"Using the context below, write a clear 'Analyst Commentary' summarizing the insights, "
+                    f"followed by a 'Quoted Evidence' section with exact quotes.\n\n"
+                    f"Context:\n{context}\n\nQuestion: {user_input}"
+                )}
             ],
-            temperature=0.2
         ).choices[0].message.content.strip()
 
         # --- log to rag_query_history ---
@@ -326,7 +347,8 @@ def chat():
         except Exception as log_error:
             log(f"⚠️ Logging failed: {log_error}")
 
-        return jsonify({"response": f"{ans}\n\n{src_txt}"})
+        return jsonify({"response": f"{ans}\n\n{src_txt}", "sources": list(srcs)})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
