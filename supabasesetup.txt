@@ -135,3 +135,12 @@ set raw_user_meta_data = jsonb_set(
   '"admin"'
 )
 where email = 'kmayer@marshall.usc.edu';
+
+# Admin / student logins 
+Admin login (can access admin tools like usage dashboard) 
+email: admin@local.test
+pw: marshallaitools2025$
+
+Student login (cannot access admin tools)
+email: student@local.test
+pw: marshallaitools2025$
