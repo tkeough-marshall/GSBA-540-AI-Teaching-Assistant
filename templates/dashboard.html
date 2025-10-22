@@ -75,32 +75,78 @@ tbody tr:hover{background:#fff6f6;}
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-const supabase = createClient("{{ SUPABASE_URL }}","{{ SUPABASE_ANON_KEY }}");
+import Chart from "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/+esm";
 
-async function loadDashboard(){
-  const res = await supabase.from("rag_query_history").select("*").order("created_at",{ascending:false}).limit(50);
+const supabase = createClient("{{ SUPABASE_URL }}", "{{ SUPABASE_ANON_KEY }}");
+
+async function loadDashboard() {
+  const res = await supabase
+    .from("rag_query_history")
+    .select("user_email, query_text, created_at")
+    .order("created_at", { ascending: true })
+    .limit(500);
+
   const data = res.data || [];
+
+  // --- Metrics ---
   document.getElementById("qTotal").textContent = data.length;
   const today = new Date().toISOString().split("T")[0];
-  document.getElementById("qToday").textContent = data.filter(r=>r.created_at.startsWith(today)).length;
-  document.getElementById("uUnique").textContent = new Set(data.map(r=>r.user_email)).size;
+  document.getElementById("qToday").textContent = data.filter(r => r.created_at?.startsWith(today)).length;
+  document.getElementById("uUnique").textContent = new Set(data.map(r => r.user_email)).size;
 
+  // --- Table ---
   const tbody = document.getElementById("queryTable");
   tbody.innerHTML = "";
-  if(!data.length){
+  if (!data.length) {
     tbody.innerHTML = `<tr><td colspan="3" class="muted">No query data found.</td></tr>`;
     return;
   }
-  data.slice(0,20).forEach(r=>{
+  data.slice(-20).reverse().forEach(r => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${r.user_email || "—"}</td>
-      <td>${(r.query_text || "").slice(0,80)}</td>
+      <td>${(r.query_text || "").slice(0, 80)}</td>
       <td>${new Date(r.created_at).toLocaleString()}</td>
     `;
     tbody.appendChild(tr);
   });
+
+  // --- Chart ---
+  const perDay = {};
+  data.forEach(d => {
+    if (!d.created_at) return;
+    const day = d.created_at.split("T")[0];
+    perDay[day] = (perDay[day] || 0) + 1;
+  });
+  const sortedDays = Object.keys(perDay).sort();
+  const counts = sortedDays.map(k => perDay[k]);
+
+  const ctx = document.createElement("canvas");
+  const chartContainer = document.getElementById("chartArea");
+  chartContainer.innerHTML = "";
+  chartContainer.appendChild(ctx);
+
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: sortedDays,
+      datasets: [{
+        label: "Queries per Day",
+        data: counts,
+        backgroundColor: "rgba(153, 0, 0, 0.7)",
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision: 0 } }
+      }
+    }
+  });
 }
+
 loadDashboard();
 </script>
 </body>
