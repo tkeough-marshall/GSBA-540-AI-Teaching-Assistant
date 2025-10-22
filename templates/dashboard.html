@@ -25,6 +25,7 @@ h2{margin:0 0 8px;color:var(--cardinal);}
 .metric h4{margin:0;color:var(--cardinal);font-size:1.2rem;}
 .metric span{color:var(--muted);font-size:0.9rem;}
 .chart{height:260px;background:#f9f9f9;border:1px solid #eee;border-radius:10px;margin-bottom:26px;display:flex;align-items:center;justify-content:center;color:var(--muted);}
+.chart canvas{width:100% !important;height:100% !important;}
 table{width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;}
 thead{background:#f6f6f6;}
 th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:.92rem;}
@@ -121,9 +122,11 @@ async function loadDashboard() {
   const sortedDays = Object.keys(perDay).sort();
   const counts = sortedDays.map(k => perDay[k]);
 
-  const ctx = document.createElement("canvas");
   const chartContainer = document.getElementById("chartArea");
   chartContainer.innerHTML = "";
+  const ctx = document.createElement("canvas");
+  ctx.width = chartContainer.clientWidth;
+  ctx.height = chartContainer.clientHeight;
   chartContainer.appendChild(ctx);
 
   new Chart(ctx, {
@@ -133,11 +136,12 @@ async function loadDashboard() {
       datasets: [{
         label: "Queries per Day",
         data: counts,
-        backgroundColor: "rgba(153, 0, 0, 0.7)",
+        backgroundColor: "rgba(153, 0, 0, 0.7)"
       }]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
         x: { grid: { display: false } },
