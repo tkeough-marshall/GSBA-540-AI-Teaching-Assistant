@@ -31,6 +31,12 @@ thead{background:#f6f6f6;}
 th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:.92rem;}
 tbody tr:hover{background:#fff6f6;}
 .muted{color:var(--muted);}
+.query-cell {
+  max-width: 800px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>
 </head>
 
@@ -62,13 +68,12 @@ tbody tr:hover{background:#fff6f6;}
     <table>
       <thead>
         <tr>
-          <th>User</th>
           <th>Query</th>
           <th style="width:180px;">Timestamp</th>
         </tr>
       </thead>
       <tbody id="queryTable">
-        <tr><td colspan="3" class="muted">Loading…</td></tr>
+        <tr><td colspan="2" class="muted">Loading…</td></tr>
       </tbody>
     </table>
   </div>
@@ -77,42 +82,41 @@ tbody tr:hover{background:#fff6f6;}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
 const supabase = createClient("{{ SUPABASE_URL }}", "{{ SUPABASE_ANON_KEY }}");
 
 async function loadDashboard() {
   const res = await supabase
     .from("rag_query_history")
-    .select("user_email, query_text, created_at")
+    .select("query_text, created_at")
     .order("created_at", { ascending: true })
     .limit(500);
 
   const data = res.data || [];
 
-  // --- Metrics ---
+  // Metrics
   document.getElementById("qTotal").textContent = data.length;
   const today = new Date().toISOString().split("T")[0];
   document.getElementById("qToday").textContent = data.filter(r => r.created_at?.startsWith(today)).length;
   document.getElementById("uUnique").textContent = new Set(data.map(r => r.user_email)).size;
 
-  // --- Table ---
+  // Table
   const tbody = document.getElementById("queryTable");
   tbody.innerHTML = "";
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="3" class="muted">No query data found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="2" class="muted">No query data found.</td></tr>`;
     return;
   }
+
   data.slice(-20).reverse().forEach(r => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${r.user_email || "—"}</td>
-      <td>${(r.query_text || "").slice(0, 80)}</td>
+      <td class="query-cell" title="${r.query_text || ""}">${r.query_text || "—"}</td>
       <td>${new Date(r.created_at).toLocaleString()}</td>
     `;
     tbody.appendChild(tr);
   });
 
-  // --- Chart ---
+  // Chart
   const perDay = {};
   data.forEach(d => {
     if (!d.created_at) return;
@@ -125,8 +129,6 @@ async function loadDashboard() {
   const chartContainer = document.getElementById("chartArea");
   chartContainer.innerHTML = "";
   const ctx = document.createElement("canvas");
-  ctx.width = chartContainer.clientWidth;
-  ctx.height = chartContainer.clientHeight;
   chartContainer.appendChild(ctx);
 
   new Chart(ctx, {

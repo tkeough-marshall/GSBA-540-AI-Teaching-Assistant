@@ -1,0 +1,128 @@
+# Extensions
+create extension if not exists vector;
+create extension if not exists "uuid-ossp";
+
+# Table setup
+create table public.documents (
+  id bigserial primary key,
+  content text null,
+  metadata jsonb null,
+  embedding vector(3072) null
+);
+
+create table public.files (
+  id uuid primary key default uuid_generate_v4(),
+  file_name text not null,
+  file_type text null,
+  uploaded_at timestamptz default now(),
+  num_chunks integer default 0,
+  source_path text null,
+  constraint files_file_name_key unique (file_name)
+);
+
+create table public.rag_query_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid null,
+  user_email text null,
+  query_text text not null,
+  matched_docs jsonb null,
+  model_response text null,
+  similarity_threshold double precision null,
+  top_k integer null,
+  created_at timestamptz default now(),
+  constraint rag_query_history_user_id_fkey
+    foreign key (user_id)
+    references auth.users (id)
+    on delete set null
+);
+
+# AUTH
+-- Enable Row Level Security
+alter table public.documents enable row level security;
+alter table public.files enable row level security;
+alter table public.rag_query_history enable row level security;
+
+-- =========================
+--  DOCUMENTS POLICIES
+-- =========================
+
+-- Allow authenticated users to read documents
+create policy "authenticated read docs"
+on public.documents
+for select
+to public
+using (
+  auth.role() = 'authenticated'::text
+);
+
+-- Allow authenticated users to insert, update, or delete documents
+create policy "authenticated write docs"
+on public.documents
+for all
+to public
+using (
+  auth.role() = 'authenticated'::text
+);
+
+-- =========================
+--  FILES POLICIES
+-- =========================
+
+-- Allow authenticated users to read files
+create policy "authenticated read files"
+on public.files
+for select
+to public
+using (
+  auth.role() = 'authenticated'::text
+);
+
+-- Allow authenticated users to insert, update, or delete files
+create policy "authenticated write files"
+on public.files
+for all
+to public
+using (
+  auth.role() = 'authenticated'::text
+);
+
+-- =========================
+--  RAG QUERY HISTORY POLICIES
+-- =========================
+
+-- Allow inserts only from service role (e.g., server-side)
+create policy "Allow inserts from service role only"
+on public.rag_query_history
+for insert
+to service_role
+with check (true);
+
+# Match_documents function
+create or replace function public.match_documents (
+  query_embedding vector,
+  match_count integer
+)
+returns table (
+  id bigint,
+  content text,
+  source_file text,
+  file_type text,
+  chunk_index integer,
+  similarity double precision
+)
+language plpgsql
+as $$
+begin
+  return query
+  select
+    d.id,
+    d.content,
+    d.metadata->>'source_file' as source_file,
+    d.metadata->>'file_type' as file_type,
+    (d.metadata->>'chunk_index')::int as chunk_index,
+    1 - (d.embedding <=> query_embedding) as similarity
+  from public.documents as d
+  order by d.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
