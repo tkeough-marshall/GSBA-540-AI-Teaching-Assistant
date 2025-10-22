@@ -126,3 +126,12 @@ begin
   limit match_count;
 end;
 $$;
+
+# Make a user an admin
+update auth.users
+set raw_user_meta_data = jsonb_set(
+  coalesce(raw_user_meta_data, '{}'::jsonb),
+  '{role}',
+  '"admin"'
+)
+where email = 'kmayer@marshall.usc.edu';
