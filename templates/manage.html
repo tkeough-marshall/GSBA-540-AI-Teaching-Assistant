@@ -71,44 +71,56 @@ tr.fade-in {animation: fadeIn .4s ease;}
 
 <div id="accessDenied">Access denied. Admin privileges required.</div>
 
-<div class="frame" id="manageFrame" style="display:none;">
-  <h2>Manage Uploaded Materials</h2>
-  <div class="rule"></div>
+<div class="frame" id="manageFrame" style="display:none;flex-direction:row;align-items:flex-start;">
+  <!-- Sidebar -->
+  <aside style="width:220px;margin-right:24px;border-right:1px solid #eee;padding-right:18px;">
+    <h3 style="color:#990000;margin-top:0;">Admin Links</h3>
+    <ul style="list-style:none;padding:0;font-size:0.95rem;line-height:1.8;">
+      <li><a href="/manage" style="color:#222;text-decoration:none;">Manage Files</a></li>
+      <li><a href="/dashboard" style="color:#222;text-decoration:none;">Usage Dashboard</a></li>
+    </ul>
+  </aside>
 
-  <div id="drop" class="drop" ondrop="onDrop(event)" ondragover="onDrag(event)" ondragleave="onLeave(event)">
-    <div class="muted" style="margin-bottom:6px">Drag and drop your files here</div>
-    <div class="muted" style="margin-bottom:10px">or</div>
-    <input id="fileInput" type="file" multiple hidden />
-    <button class="btn" id="selectBtn" onclick="document.getElementById('fileInput').click()">Select Files</button>
-    <div style="margin-top:12px;font-size:0.9rem;color:#666;">
-      Supported filetypes: <strong>.pdf, .pptx, .docx</strong>
+  <!-- Main content -->
+  <div style="flex:1;">
+    <h2>Manage Uploaded Materials</h2>
+    <div class="rule"></div>
+
+    <div id="drop" class="drop" ondrop="onDrop(event)" ondragover="onDrag(event)" ondragleave="onLeave(event)">
+      <div class="muted" style="margin-bottom:6px">Drag and drop your files here</div>
+      <div class="muted" style="margin-bottom:10px">or</div>
+      <input id="fileInput" type="file" multiple hidden />
+      <button class="btn" id="selectBtn" onclick="document.getElementById('fileInput').click()">Select Files</button>
+      <div style="margin-top:12px;font-size:0.9rem;color:#666;">
+        Supported filetypes: <strong>.pdf, .pptx, .docx</strong>
+      </div>
     </div>
-  </div>
 
-  <div class="bar">
-    <input id="search" type="text" placeholder="Search files..."/>
-    <button id="deleteBtn" class="btn danger" disabled>Delete Selected</button>
-  </div>
+    <div class="bar">
+      <input id="search" type="text" placeholder="Search files..."/>
+      <button id="deleteBtn" class="btn danger" disabled>Delete Selected</button>
+    </div>
 
-  <div class="progress" id="progress">
-    <span id="ptext" class="muted">Uploading…</span>
-    <div class="track"><div class="fill" id="pfill"></div></div>
-    <span id="pnum" class="muted">0%</span>
-  </div>
+    <div class="progress" id="progress">
+      <span id="ptext" class="muted">Uploading…</span>
+      <div class="track"><div class="fill" id="pfill"></div></div>
+      <span id="pnum" class="muted">0%</span>
+    </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th style="width:36px"><input type="checkbox" id="selectAll"/></th>
-        <th>Name</th>
-        <th style="width:120px">Type</th>
-        <th style="width:220px">Date Added</th>
-        <th style="width:150px;text-align:right"></th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
-</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px"><input type="checkbox" id="selectAll"/></th>
+          <th>Name</th>
+          <th style="width:120px">Type</th>
+          <th style="width:220px">Date Added</th>
+          <th style="width:150px;text-align:right"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div> <!-- end main content -->
+</div> <!-- end frame -->
 
 <div id="notices"></div>
 <div id="modalRoot"></div>

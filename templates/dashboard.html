@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Usage Dashboard</title>
+<link rel="icon" href="/static/favicon.ico">
+
+<style>
+:root {
+  --cardinal:#990000; --gold:#ffd700; --ink:#222;
+  --muted:#777; --bg:#f8f8f8; --panel:#fff; --line:#e7e7e7;
+}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+.frame{max-width:1100px;margin:28px auto;background:var(--panel);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:22px;min-height:720px;display:flex;flex-direction:row;position:relative}
+aside{width:220px;margin-right:24px;border-right:1px solid var(--line);padding-right:18px;}
+aside h3{color:var(--cardinal);margin-top:0;}
+aside ul{list-style:none;padding:0;font-size:0.95rem;line-height:1.8;}
+aside a{text-decoration:none;color:var(--ink);}
+.main{flex:1;display:flex;flex-direction:column;}
+h2{margin:0 0 8px;color:var(--cardinal);}
+.rule{height:2px;background:var(--gold);width:100%;margin:6px 0 18px;border-radius:2px;}
+.metrics{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
+.metric{flex:1;min-width:160px;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:14px 16px;text-align:center;}
+.metric h4{margin:0;color:var(--cardinal);font-size:1.2rem;}
+.metric span{color:var(--muted);font-size:0.9rem;}
+.chart{height:260px;background:#f9f9f9;border:1px solid #eee;border-radius:10px;margin-bottom:26px;display:flex;align-items:center;justify-content:center;color:var(--muted);}
+table{width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;}
+thead{background:#f6f6f6;}
+th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:.92rem;}
+tbody tr:hover{background:#fff6f6;}
+.muted{color:var(--muted);}
+</style>
+</head>
+
+<body>
+{% include '_header.html' %}
+
+<div class="frame">
+  <aside>
+    <h3>Admin Links</h3>
+    <ul>
+      <li><a href="/manage">Manage Files</a></li>
+      <li><a href="/dashboard">Usage Dashboard</a></li>
+    </ul>
+  </aside>
+
+  <div class="main">
+    <h2>Usage Dashboard</h2>
+    <div class="rule"></div>
+
+    <div class="metrics">
+      <div class="metric"><h4 id="qToday">0</h4><span>Queries Today</span></div>
+      <div class="metric"><h4 id="qTotal">0</h4><span>Total Queries</span></div>
+      <div class="metric"><h4 id="uUnique">0</h4><span>Unique Users</span></div>
+    </div>
+
+    <div class="chart" id="chartArea">[ Queries per Day Chart ]</div>
+
+    <h3 style="color:#990000;margin-bottom:8px;">Recent Queries</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Query</th>
+          <th style="width:180px;">Timestamp</th>
+        </tr>
+      </thead>
+      <tbody id="queryTable">
+        <tr><td colspan="3" class="muted">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+const supabase = createClient("{{ SUPABASE_URL }}","{{ SUPABASE_ANON_KEY }}");
+
+async function loadDashboard(){
+  const res = await supabase.from("rag_query_history").select("*").order("created_at",{ascending:false}).limit(50);
+  const data = res.data || [];
+  document.getElementById("qTotal").textContent = data.length;
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("qToday").textContent = data.filter(r=>r.created_at.startsWith(today)).length;
+  document.getElementById("uUnique").textContent = new Set(data.map(r=>r.user_email)).size;
+
+  const tbody = document.getElementById("queryTable");
+  tbody.innerHTML = "";
+  if(!data.length){
+    tbody.innerHTML = `<tr><td colspan="3" class="muted">No query data found.</td></tr>`;
+    return;
+  }
+  data.slice(0,20).forEach(r=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.user_email || "—"}</td>
+      <td>${(r.query_text || "").slice(0,80)}</td>
+      <td>${new Date(r.created_at).toLocaleString()}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+loadDashboard();
+</script>
+</body>
+</html>

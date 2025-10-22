@@ -359,6 +359,16 @@ def inject_env():
         SUPABASE_ANON_KEY=SUPABASE_ANON_KEY
     )
 
+@app.route("/dashboard")
+@require_login
+def dashboard():
+    decoded = decode_jwt_from_cookie()
+    role = (decoded.get("user_metadata") or decoded.get("app_metadata") or {}).get("role") if decoded else None
+    if role != "admin":
+        return render_template("unauthorized.html"), 403
+    return render_template("dashboard.html")
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, threaded=True)
