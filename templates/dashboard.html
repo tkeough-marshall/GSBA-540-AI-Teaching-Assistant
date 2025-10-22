@@ -74,9 +74,9 @@ tbody tr:hover{background:#fff6f6;}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-import Chart from "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/+esm";
 
 const supabase = createClient("{{ SUPABASE_URL }}", "{{ SUPABASE_ANON_KEY }}");
 
