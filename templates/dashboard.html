@@ -95,8 +95,12 @@ async function loadDashboard() {
 
   // Metrics
   document.getElementById("qTotal").textContent = data.length;
-  const today = new Date().toISOString().split("T")[0];
-  document.getElementById("qToday").textContent = data.filter(r => r.created_at?.startsWith(today)).length;
+  const todayLocal = new Date();
+  const todayStr = todayLocal.toLocaleDateString("en-CA"); // yyyy-mm-dd in local time
+  document.getElementById("qToday").textContent = data.filter(r => {
+    const d = new Date(r.created_at);
+    return d.toLocaleDateString("en-CA") === todayStr;
+  }).length;
   document.getElementById("uUnique").textContent = new Set(data.map(r => r.user_email)).size;
 
   // Table
