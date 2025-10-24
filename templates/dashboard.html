@@ -124,8 +124,8 @@ async function loadDashboard() {
   const perDay = {};
   data.forEach(d => {
     if (!d.created_at) return;
-    const day = d.created_at.split("T")[0];
-    perDay[day] = (perDay[day] || 0) + 1;
+    const localDate = new Date(d.created_at).toLocaleDateString("en-CA"); // yyyy-mm-dd local
+    perDay[localDate] = (perDay[localDate] || 0) + 1;
   });
   const sortedDays = Object.keys(perDay).sort();
   const counts = sortedDays.map(k => perDay[k]);
