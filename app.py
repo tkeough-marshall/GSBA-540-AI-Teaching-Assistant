@@ -250,7 +250,8 @@ def upload_file():
         f.write(data)
 
     try:
-        res = supabase.storage.from_(BUCKET).upload(name, data)
+        with open(tmp_path, "rb") as f:
+            res = supabase.storage.from_(BUCKET).upload(name, f)
         if hasattr(res, "error") and res.error is not None:
             raise Exception(res.error.message)
         supabase.table("files").insert({
