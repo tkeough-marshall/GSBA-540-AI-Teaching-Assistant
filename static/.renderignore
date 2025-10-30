@@ -1,0 +1,19 @@
+# Ignore local content and large files
+Transcripts/
+*.vtt
+*.txt
+supabasesetup.txt
+
+# Common dev artifacts
+__pycache__/
+*.pyc
+*.log
+
+# Local environment and config
+.env
+.git
+.gitignore
+
+# Editor and OS junk
+.vscode/
+.DS_Store
