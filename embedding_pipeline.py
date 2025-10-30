@@ -5,7 +5,7 @@ CHUNK_SIZE = 500           # number of words per chunk (adjust if needed)
 CHUNK_OVERLAP = 100        # overlap between successive chunks
 VECTOR_DIM = 3072          # embedding dimension you're using
 EMBED_MODEL = "text-embedding-3-large"  # adjust if using a different model
-ALLOWED_EXTENSIONS = (".pdf", ".docx", ".pptx")
+ALLOWED_EXTENSIONS = (".pdf", ".docx", ".pptx", ".txt") # file types to process
 MAX_FILES = None           # number of files to process for testing (None = process all)
 BUCKET = "materials"       # Supabase storage bucket name
 
@@ -62,6 +62,10 @@ def parse_pptx(file_path: str) -> str:
                     texts.append(txt)
     return "\n".join(texts)
 
+def parse_txt(file_path: str) -> str:
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
+
 def extract_text(file_path: str) -> str:
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".pdf":
@@ -70,8 +74,11 @@ def extract_text(file_path: str) -> str:
         return parse_docx(file_path)
     elif ext == ".pptx":
         return parse_pptx(file_path)
+    elif ext == ".txt":
+        return parse_txt(file_path)
     else:
         return ""
+
 
 # ===============================
 # 🔢 CHUNKING + EMBEDDING

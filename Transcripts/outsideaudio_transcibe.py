@@ -16,22 +16,38 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 samplerate = 44100
-block_duration = 5
+chunk_duration = 0.5   # seconds per audio chunk sent to queue
+accumulate_time = 15.0 # seconds before sending to Whisper
 q = queue.Queue()
 running = False
 exit_flag = False
 
 def record_audio():
-    """Continuously record audio chunks while running."""
+    """Continuously record audio chunks in real time while running."""
     global running, exit_flag
     print("Press 's' to start/stop recording, 'q' to quit.")
-    while not exit_flag:
+
+    buffer = []
+    frames_per_chunk = int(chunk_duration * samplerate)
+    accumulated_samples = int(accumulate_time * samplerate)
+
+    def callback(indata, frames, time, status):
         if running:
-            audio = sd.rec(int(block_duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
-            sd.wait()
-            q.put(audio)
-        else:
+            buffer.append(indata.copy())
+            total_samples = sum(len(b) for b in buffer)
+            if total_samples >= accumulated_samples:
+                combined = np.concatenate(buffer, axis=0)
+                q.put(combined)
+                buffer.clear()
+
+    with sd.InputStream(samplerate=samplerate, channels=1, dtype=np.int16, callback=callback):
+        while not exit_flag:
             sd.sleep(100)
+    # Flush any remaining data
+    if buffer:
+        combined = np.concatenate(buffer, axis=0)
+        q.put(combined)
+    q.put(None)
 
 def transcribe_worker():
     """Pull audio chunks and send to Whisper."""
@@ -47,11 +63,15 @@ def transcribe_worker():
                 audio_path = tmpfile.name
             try:
                 with open(audio_path, "rb") as f:
-                    transcript = openai.audio.transcriptions.create(model="whisper-1", file=f)
+                    transcript = openai.audio.transcriptions.create(
+                        model="whisper-1", 
+                        file=f
+                    )
                 text = transcript.text.strip()
-                print("> " + text)
-                out.write(text + "\n")
-                out.flush()
+                if text:
+                    print("> " + text)
+                    out.write(text + "\n")
+                    out.flush()
             except Exception as e:
                 print("Error:", e)
 
@@ -64,7 +84,6 @@ def on_press(key):
             print("Recording started." if running else "Recording stopped.")
         elif key.char == "q":
             exit_flag = True
-            q.put(None)
             return False  # stop listener
     except AttributeError:
         pass

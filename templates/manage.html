@@ -315,15 +315,13 @@ async function uploadFiles(list){
     tbody.appendChild(tr);
   });
 
-  const limit = 3;
-  const queue = [...list];
-  const workers = Array.from({ length: limit }, async function worker(){
-    while(queue.length){
-      const f = queue.shift();
-      if(f) await uploadFile(f);
-    }
-  });
-  await Promise.all(workers);
+const limit = 1; // process one file at a time
+const queue = [...list];
+
+for (const f of queue) {
+  await uploadFile(f);
+  await new Promise(r => setTimeout(r, 800)); // small delay between uploads
+}
 
   // Wait briefly to let backend commit
   await new Promise(r => setTimeout(r, 1200));

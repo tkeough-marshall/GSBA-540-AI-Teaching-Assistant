@@ -137,12 +137,22 @@ def extract_pptx_text(path: str) -> str:
                 if t: out.append(t)
     return "\n".join(out)
 
+def extract_txt_text(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    except Exception as e:
+        log(f"❌ extract_txt_text failed for {path}: {e}")
+        return ""
+
+
 def extract_text(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     try:
         if ext == ".pdf":  return extract_pdf_text(path)
         if ext == ".docx": return extract_docx_text(path)
         if ext == ".pptx": return extract_pptx_text(path)
+        if ext == ".txt":  return extract_txt_text(path)
         return ""
     except Exception as e:
         log(f"❌ extract_text failed for {path}: {e}")
