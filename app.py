@@ -20,12 +20,12 @@ if hasattr(sys.stdout, "reconfigure"):
 def log(msg: str): print(msg, flush=True)
 
 # -------- env --------
-load_dotenv()
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+# load_dotenv()
+# SUPABASE_URL = os.getenv("SUPABASE_URL")
+# SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+# SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 EMBED_MODEL = "text-embedding-3-large"
 CHAT_MODEL  = "gpt-4o-mini"
@@ -38,8 +38,11 @@ BUCKET = "materials"
 # -------- clients --------
 app = Flask(__name__, static_folder="static", static_url_path="/static", template_folder="templates")
 CORS(app)
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-oai = OpenAI(api_key=OPENAI_API_KEY)
+supabase = create_client(
+    os.environ.get("SUPABASE_URL"),
+    os.environ.get("SUPABASE_SERVICE_KEY")
+)
+oai = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # -------- system prompt --------
 def load_system_prompt(filepath="system_message.txt"):
@@ -366,9 +369,10 @@ def chat():
 @app.context_processor
 def inject_env():
     return dict(
-        SUPABASE_URL=SUPABASE_URL,
-        SUPABASE_ANON_KEY=SUPABASE_ANON_KEY
+        SUPABASE_URL=os.environ.get("SUPABASE_URL"),
+        SUPABASE_ANON_KEY=os.environ.get("SUPABASE_ANON_KEY")
     )
+
 
 @app.route("/dashboard")
 @require_login
